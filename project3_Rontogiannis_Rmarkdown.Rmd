@@ -1,0 +1,96 @@
+---
+title: | 
+ \textbf{TBD}
+
+ \vspace{1cm} 
+subtitle: 
+ "Practical Data Analysis - Project 3: A Simulation Study"
+author: "Aristofanis Rontogiannis"
+date: "2024-11-27"
+output:
+  pdf_document: 
+    latex_engine: xelatex
+    keep_tex: true
+
+link-citations: yes
+abstract: |
+  **Purpose**: 
+
+  **Methods**: 
+    
+  **Results**:
+  
+  **Conclusions**:
+  
+bibliography: References.bib
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE,
+                  message = FALSE,
+                  warning = FALSE,
+                  error = FALSE)
+
+library(summarytools)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(GGally)
+library(patchwork)
+library(dplyr)
+library(reshape2)
+library(tidyr)
+library(grid)
+library(lubridate)
+library(gtsummary)
+library(gt)
+library(ggcorrplot)
+library(glmnet)
+library(MASS)
+library(pROC)
+library(gridExtra)
+library(VIM)
+library(mice)
+library(leaps)
+library(ggplot2)
+library(ggmosaic)
+library(ggbeeswarm)
+library(ggdist)
+library(cowplot)
+```
+
+# Introduction
+
+# ADMEP
+
+## Aims and Objectives
+
+## Data Generating Mechanisms
+
+## Estimands/Targets of Analysis
+
+## Methods to Evaluate
+
+## Performance Measures
+
+# Results
+
+# Conclusion and Limits
+
+# Data Privacy and Code Availability
+
+The analysis .... The replication code can be found at <https://github.com/AristofanisR/Practical_Data_Analysis_Project3>
+
+\newpage
+
+# References
+
+::: {#refs}
+:::
+
+\newpage
+
+# Code Appendix
+
+```{r ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE}
+```
