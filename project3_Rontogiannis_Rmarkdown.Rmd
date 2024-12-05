@@ -27,8 +27,10 @@ This project is a collaboration with Dr. Zhijin Wu in the Biostatistics Departme
 # Hierarchical Structure of the Study
 
 In the trial, clusters of observations are formed, and each cluster is assigned entirely to either the treatment or control group. The budget (\(B\)) constrains the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) due to varying costs:
-- The first sample from a cluster costs \(c_1\).
-- Subsequent samples from the same cluster cost \(c_2\), where \(c_2 < c_1\).
+
+  - The first sample from a cluster costs \(c_1\).
+  
+  - Subsequent samples from the same cluster cost \(c_2\), where \(c_2 < c_1\).
 
 ## Modeling Assumptions
 
@@ -45,9 +47,12 @@ The cluster-specific mean \(\mu_i\) incorporates:
 \]
 
 where:
-- \(\alpha\) is the fixed intercept,
-- \(\beta\) is the fixed effect of treatment (\(X_i = 1\) for treatment, \(X_i = 0\) for control),
-- \(\epsilon_i \sim \text{Normal}(0, \gamma^2)\) is the random cluster effect.
+
+  - \(\alpha\) is the fixed intercept,
+  
+  - \(\beta\) is the fixed effect of treatment (\(X_i = 1\) for treatment, \(X_i = 0\) for control),
+  
+  - \(\epsilon_i \sim \text{Normal}(0, \gamma^2)\) is the random cluster effect.
 
 The overall marginal mean for \(Y_{ij}\) is:
 
@@ -82,8 +87,10 @@ The first aim is to design a simulation study using the ADEMP framework to evalu
 ## Aim 2: Analyze Cost Parameters
 
 The second aim investigates the relationship between:
-- The relative costs \(c_1\) (first observation cost) and \(c_2\) (subsequent observation cost),
-- The underlying data generation parameters (\(\alpha, \beta, \gamma^2, \sigma^2\)).
+
+  - The relative costs \(c_1\) (first observation cost) and \(c_2\) (subsequent observation cost),
+  
+  - The underlying data generation parameters (\(\alpha, \beta, \gamma^2, \sigma^2\)).
 
 This analysis identifies optimal configurations for \(G\) and \(R\) to minimize the variance of the estimated treatment effect (\(\hat{\beta}\)).
 
@@ -93,13 +100,15 @@ The third aim extends the simulation to the Poisson model for count outcomes. Th
 
 # Key Questions
 
-- How should the budget (\(B\)) be allocated between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) to minimize the variance of the treatment effect estimate (\(\hat{\beta}\))?
-- How do relative costs (\(c_1, c_2\)) affect the optimal allocation of resources?
-- How does the modeling framework (Normal vs. Poisson) influence the optimal design and the precision of \(\hat{\beta}\)?
+  - How should the budget (\(B\)) be allocated between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) to minimize the variance of the treatment effect estimate (\(\hat{\beta}\))?
+  
+  - How do relative costs (\(c_1, c_2\)) affect the optimal allocation of resources?
+  
+  - How does the modeling framework (Normal vs. Poisson) influence the optimal design and the precision of \(\hat{\beta}\)?
 
 # Optimization Framework
 
-The number of clusters (\(G\)) and observations per cluster (\(R\)) are iterated over, constrained by the total budget:
+The number of clusters (\(G\)) is iterated over, and for each (\(G\)) we calculate observations per cluster (\(R\)) , constrained by the total budget:
 
 \[
 B = G \cdot c_1 + G \cdot (R - 1) \cdot c_2.
@@ -113,8 +122,17 @@ This project explores the trade-off between the number of clusters (\(G\)) and t
 
 
 
+## Aims and Objectives
 
+## Data Generating Mechanisms
 
+## Estimands/Targets of Analysis
+
+## Methods to Evaluate
+
+## Performance Measures
+
+# Results
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE,
@@ -123,7 +141,6 @@ knitr::opts_chunk$set(echo = FALSE,
                   error = FALSE)
 
 library(summarytools)
-library(ggplot2)
 library(knitr)
 library(kableExtra)
 library(GGally)
@@ -135,24 +152,81 @@ library(grid)
 library(lubridate)
 library(gtsummary)
 library(gt)
-library(ggcorrplot)
-library(glmnet)
 library(MASS)
-library(pROC)
 library(gridExtra)
-library(VIM)
-library(mice)
 library(leaps)
 library(ggplot2)
-library(ggmosaic)
-library(ggbeeswarm)
-library(ggdist)
 library(cowplot)
 ```
 
 # Introduction
 
 # ADMEP
+
+---
+
+# ADEMP Framework
+
+## Aims
+
+1. **Aim 1**: Design a simulation study using the ADEMP framework to evaluate potential study designs under a Normal model.
+2. **Aim 2**: Explore relationships between the cost ratio \( c_1/c_2 \) and design parameters to assess their impact on performance.
+3. **Aim 3**: Extend the simulation study to the Poisson hierarchical model to compare results with the Normal model.
+
+---
+
+## Data-Generating Mechanisms
+
+1. **Normal Model**:
+    \[
+    Y_{ij} \sim N(\mu_{ij}, \sigma^2), \quad \mu_{ij} = \alpha + \beta X_i + \epsilon_i, \quad \epsilon_i \sim N(0, \gamma^2)
+    \]
+
+2. **Poisson Model**:
+    \[
+    Y_{ij} \sim \text{Poisson}(\mu_{ij}), \quad \log(\mu_{ij}) = \alpha + \beta X_i + \epsilon_i, \quad \epsilon_i \sim N(0, \gamma^2)
+    \]
+
+3. **Budget Constraints**:
+    The total cost of the design is \( B = G \cdot c_1 + G \cdot R \cdot c_2 \), where \( G \) is the number of clusters and \( R \) is the number of observations per cluster.
+
+---
+
+## Estimands
+
+- The **target estimand** is \( \beta \), the fixed effect of treatment, representing the average treatment effect.
+
+---
+
+## Methods
+
+### Simulation Workflow
+
+1. **Inputs**:
+    - Fixed parameters: \( \alpha, \beta, \gamma^2, \sigma^2, B, c_1, c_2 \).
+    - Iterate over possible \( G \): \( G = 2, 3, \dots, \lfloor B / c_1 \rfloor \).
+    - Compute \( R \): \( R = \lfloor (B - G \cdot c_1) / (G \cdot c_2) \rfloor + 1 \).
+    
+2. **Data Generation**:
+    - Simulate \( Y_{ij} \) for both Normal and Poisson models using hierarchical structures.
+
+3. **Model Fitting**:
+    - Fit \( lmer(Y \sim X + (1| \text{cluster})) \) for Normal data.
+    - Fit \( glmer(Y \sim X + (1| \text{cluster}), \text{family = poisson}) \) for Poisson data.
+
+4. **Performance Measures**:
+    - Calculate:
+        - **Bias**: \( \mathbb{E}[\hat{\beta}] - \beta \)
+        - **Variance**: \( \text{Var}(\hat{\beta}) \)
+        - **MSE**: \( \text{Bias}^2 + \text{Variance} \)
+        - **Coverage Probability**: Proportion of confidence intervals containing \( \beta \)
+        - **Confidence Interval Width**
+
+5. **Sensitivity Analysis**:
+    - Vary \( c_1/c_2 \) and parameters \( \gamma^2, \sigma^2 \) to examine their effects on design performance.
+
+---
+
 
 # NORMAL
 
@@ -296,15 +370,15 @@ generate_plot <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations = 1
   plot <- ggplot(results$all_results, aes(x = G, y = beta_var)) +
     geom_line(color = "purple3") +
     geom_point(size = .5) +
-    geom_point(data = min_variance_row, aes(x = G, y = beta_var), color = "red", size = 1.5) +
+    geom_point(data = min_variance_row, aes(x = G, y = beta_var), color = "red", size = 1) +
     geom_hline(yintercept = min_variance_row$beta_var, linetype = 2, color = "gray40") +
     geom_vline(xintercept = min_variance_row$G, linetype = 2, color = "gray40") +
     geom_text(
       data = min_variance_row,
       aes(x = G, y = beta_var, label = paste0("G = ", G, ", R= ", R, "\nVar = ", round(beta_var, 4))),
-      vjust = -1, hjust = 1.2, color = "red", size = 3
+      vjust = -1, hjust = 1.1, color = "red", size = 3
     ) +
-    ggtitle(bquote(list(B == .(B), beta==.(beta), gamma^2 == .(gamma2), sigma^2 == .(sigma2),
+    ggtitle(bquote(list(beta==.(beta), gamma^2 == .(gamma2), sigma^2 == .(sigma2),
                          c1 == .(c1), c2 == .(c2)
                    ))) +
     labs(
@@ -363,26 +437,26 @@ generate_multiple_plots <- function(input_combinations, iterations = 100) {
 ```{r, fig.width = 12, fig.height = 10}
 # Define a set of input combinations
 input_combinations <- list(
-  list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 1, B = 5000, c1 = 200, c2 = 5),
-  list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 2, B = 5000, c1 = 100, c2 = 5),
-  list(alpha = 5, beta = 1, gamma2 = 0.5, sigma2 = 1, B = 5000, c1 = 200, c2 = 5),
-  list(alpha = 5, beta = 1, gamma2 = 0.5, sigma2 = 2, B = 5000, c1 = 100, c2 = 5),
-  list(alpha = 5, beta = 2, gamma2 = 0.6, sigma2 = 1, B = 5000, c1 = 200, c2 = 5),
-  list(alpha = 5, beta = 2, gamma2 = 0.6, sigma2 = 2, B = 5000, c1 = 100, c2 = 5),
-  list(alpha = 5, beta = 2, gamma2 = 0.7, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 2, gamma2 = 0.7, sigma2 = 2, B = 5000, c1 = 100, c2 = 10),
-  list(alpha = 5, beta = 3, gamma2 = 0.8, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 3, gamma2 = 0.8, sigma2 = 2, B = 5000, c1 = 100, c2 = 10),
-  list(alpha = 5, beta = 3, gamma2 = 0.9, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 3, gamma2 = 0.9, sigma2 = 2, B = 5000, c1 = 100, c2 = 10),
-  list(alpha = 5, beta = 4, gamma2 = 0.8, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 4, gamma2 = 0.8, sigma2 = 2, B = 5000, c1 = 100, c2 = 10),
-  list(alpha = 5, beta = 4, gamma2 = 0.9, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 4, gamma2 = 0.9, sigma2 = 2, B = 5000, c1 = 100, c2 = 10)
+  list(alpha = 5, beta = 1, gamma2 = 0.2, sigma2 = 1, B = 5000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 1, gamma2 = 0.2, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, sigma2 = 2, B = 5000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 1, B = 5000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.5, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.5, sigma2 = 2, B = 5000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 10, gamma2 = 0.6, sigma2 = 1, B = 5000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 10, gamma2 = 0.6, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.7, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.7, sigma2 = 2, B = 5000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 10, gamma2 = 0.8, sigma2 = 1, B = 5000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 10, gamma2 = 0.8, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.9, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.9, sigma2 = 2, B = 5000, c1 = 300, c2 = 10)
 ) ########################################## Maybe keep B the same to be comparable? (an to kanw na to valw sthn ekfwnisi twn plots kai na to bgalw apo thn upoekfwnisi tou kathe plot)
 
 # Generate all plots
-plots <- generate_multiple_plots(input_combinations, iterations = 100) 
+plots <- generate_multiple_plots(input_combinations, iterations = 2) 
 
 
 
@@ -394,7 +468,7 @@ library(egg)
 combined_plots = egg::ggarrange(
   plots = plots,
   nrow = 4,
-  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters (Normal)",
+  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters with B = 5000 (Normal Distribution case)",
   bottom = "Number of clusters (G)",
   left = "Variance of Beta Estimate (beta_var)"
 ) 
@@ -539,15 +613,15 @@ generate_poisson_plot <- function(alpha, beta, gamma2, B, c1, c2, iterations = 1
   plot <- ggplot(results$all_results, aes(x = G, y = beta_var)) +
     geom_line(color = "purple") +
     geom_point(size = 1) +
-    geom_point(data = min_variance_row, aes(x = G, y = beta_var), color = "red", size = 1.5) +
+    geom_point(data = min_variance_row, aes(x = G, y = beta_var), color = "red", size = 1) +
     geom_hline(yintercept = min_variance_row$beta_var, linetype = "dashed", color = "gray40") +
     geom_vline(xintercept = min_variance_row$G, linetype = "dashed", color = "gray40") +
     geom_text(
       data = min_variance_row,
       aes(x = G, y = beta_var, label = paste0("G = ", G, ", R = ", R, "\nVar = ", round(beta_var, 4))),
-      vjust = -1, hjust = 1.2, color = "red", size = 3
+      vjust = -1, hjust = 1.1, color = "red", size = 3
     ) +
-    ggtitle(bquote(list(B == .(B), beta == .(beta), gamma^2 == .(gamma2), c1 == .(c1), c2 == .(c2)))) +
+    ggtitle(bquote(list(beta == .(beta), gamma^2 == .(gamma2), c1 == .(c1), c2 == .(c2)))) +
     labs(x = "Number of Clusters (G)", y = "Variance of Beta Estimate (beta_var)") +
      labs(
       x = "Number of Clusters (G)",
@@ -602,32 +676,32 @@ generate_multiple_poisson_plots <- function(input_combinations, iterations = 100
 ```{r, fig.width = 12, fig.height = 10}
 # Define a set of input combinations for the Poisson model
 input_combinations <- list(
-  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 5000, c1 = 200, c2 = 5),
-  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 5000, c1 = 100, c2 = 5),
-  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 5000, c1 = 200, c2 = 5),
-  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 5000, c1 = 100, c2 = 5),
-  list(alpha = 5, beta = 2, gamma2 = 0.4, B = 5000, c1 = 200, c2 = 5),
-  list(alpha = 5, beta = 2, gamma2 = 0.4, B = 5000, c1 = 100, c2 = 5),
-  list(alpha = 5, beta = 2, gamma2 = 0.5, B = 5000, c1 = 200, c2 = 5),
-  list(alpha = 5, beta = 2, gamma2 = 0.5, B = 5000, c1 = 100, c2 = 5),
-  list(alpha = 5, beta = 3, gamma2 = 0.6, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 3, gamma2 = 0.6, B = 5000, c1 = 100, c2 = 10),
-  list(alpha = 5, beta = 3, gamma2 = 0.7, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 3, gamma2 = 0.7, B = 5000, c1 = 100, c2 = 10),
-  list(alpha = 5, beta = 4, gamma2 = 0.8, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 4, gamma2 = 0.8, B = 5000, c1 = 100, c2 = 10),
-  list(alpha = 5, beta = 4, gamma2 = 0.9, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 4, gamma2 = 0.9, B = 5000, c1 = 100, c2 = 10)
+  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 5000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 5000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 5000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 5000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 1, gamma2 = 0.4, B = 5000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 1, gamma2 = 0.4, B = 5000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.5, B = 5000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.5, B = 5000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 10, gamma2 = 0.6, B = 5000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 10, gamma2 = 0.6, B = 5000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.7, B = 5000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.7, B = 5000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 10, gamma2 = 0.8, B = 5000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 10, gamma2 = 0.8, B = 5000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.9, B = 5000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.9, B = 5000, c1 = 300, c2 = 10)
 )
 
 # Generate Poisson plots for the defined parameter combinations
-poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 100)
+poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 2)
 
 # Combine and display the Poisson plots in a grid
 combined_poisson_plots <- egg::ggarrange(
   plots = poisson_plots,
   nrow = 4,
-  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters (Poisson)",
+  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters with B = 5000 (Poisson Distribution Case)",
   bottom = "Number of clusters (G)",
   left = "Variance of Beta Estimate (beta_var)"
 )
@@ -635,18 +709,18 @@ combined_poisson_plots <- egg::ggarrange(
 ```
 
 
-```{r, fig.height = 12, fig.width = 10}
+```{r, fig.height = 6, fig.width = 12, fig.align = 'center', out.width = "85%"}
 # For AIM 2
 # Sensitivity Analysis: Cost Ratio (c1/c2) vs Variance of Beta Estimate
 
 # Define varying cost ratios
-cost_ratios <- seq(1.5, 10, by = 0.5)  # Example cost ratios
+cost_ratios <- seq(5, 50, by = 5)
 alpha <- 5
-beta_list <- c(1, 2, 3, 4)
-gamma2_list <- c(0.2, 0.3, 0.4, 0.5)
+beta_list <- c(1, 10, 1, 10)
+gamma2_list <- c(0.2, 0.4, 0.6, 0.8)
 sigma2_list <- c(1,2,1,2)
-B <- 5000  # Fixed budget
-iterations <- 100
+B <- 5000  
+iterations <- 2
 
 sensitivity_plots <- list()
 
@@ -682,49 +756,36 @@ poisson_title = ifelse(i == 1, "Y ~ Poisson Distribution", "")
 # Plot Sensitivity Analysis
 gnorm <- ggplot(sensitivity_results) +  
    geom_line(aes(x = c1_c2_ratio, y = normal_beta_var), color = "purple3", size = 1) +
-  geom_point(aes(x = c1_c2_ratio, y = normal_beta_var), size = 2, color = "black") +
+  geom_point(aes(x = c1_c2_ratio, y = normal_beta_var), size = 1, color = "black") +
   # geom_text(aes(x = G, y = beta_var, label = paste0("G = ", G, ", R = ", R, "\nVar = ", round(beta_var, 4))),
-  #     vjust = -1, hjust = 1.2, color = "red", size = 3) +
+  #     vjust = -1, hjust = 1.1, color = "red", size = 3) +
   labs(
     title = normal_title
   ) +
   theme_minimal() + 
   theme(axis.title.x = element_blank(), axis.title.y = element_blank()) 
-sensitivity_plots[(i-1)*2+1] <- gnorm
+sensitivity_plots[[(i-1)*2+1]] <- gnorm
 
 gpois <- ggplot(sensitivity_results) +  
   geom_line(aes(x = c1_c2_ratio, y = poisson_beta_var), color = "purple3", size = 1) +
-  geom_point(aes(x = c1_c2_ratio, y = poisson_beta_var), size = 2, color = "black") +
-  geom_text() +
+  geom_point(aes(x = c1_c2_ratio, y = poisson_beta_var), size = 1, color = "black") +
+  #geom_text() +
   labs(
     title = poisson_title
   ) +
   theme_minimal() +
   theme(axis.title.x = element_blank(), axis.title.y = element_blank()) 
-sensitivity_plots[i*2] <- gpois  
+sensitivity_plots[[i*2]] <- gpois  
 
 }
 
 
 egg::ggarrange(plots = sensitivity_plots, 
-               nrow=4, 
+               nrow = 4, 
                top = "Sensitivity Analysis: Cost Ratio vs Variance of Beta Estimate (B = 5000)",
                bottom = "Cost Ratio (c1 / c2)",
                left = "Variance of Beta Estimate")
 ```
-
-
-## Aims and Objectives
-
-## Data Generating Mechanisms
-
-## Estimands/Targets of Analysis
-
-## Methods to Evaluate
-
-## Performance Measures
-
-# Results
 
 # Conclusion and Limits
 
