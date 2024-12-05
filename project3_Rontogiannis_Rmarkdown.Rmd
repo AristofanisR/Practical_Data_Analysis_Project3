@@ -14,6 +14,108 @@ abstract: "**Purpose**: \n\n**Methods**: \n  \n**Results**:\n\n**Conclusions**:\
 #geometry: margin = 0.75in
 ---
 
+
+---
+title: "Overview of the Experimental Design Simulation Study"
+output: pdf_document
+---
+
+# Introduction
+
+This project is a collaboration with Dr. Zhijin Wu in the Biostatistics Department. The goal is to design a simulation study to investigate optimal experimental design under budget constraints for a cluster randomized trial. Observations will be assigned to either the treatment or control group, and the primary objective is to estimate the treatment effect (\(\beta\)) on an outcome variable \(Y\).
+
+# Hierarchical Structure of the Study
+
+In the trial, clusters of observations are formed, and each cluster is assigned entirely to either the treatment or control group. The budget (\(B\)) constrains the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) due to varying costs:
+- The first sample from a cluster costs \(c_1\).
+- Subsequent samples from the same cluster cost \(c_2\), where \(c_2 < c_1\).
+
+## Modeling Assumptions
+
+We assume a hierarchical structure for the outcome \(Y_{ij}\), where \(i\) indexes clusters (\(i = 1, \dots, G\)) and \(j\) indexes observations within a cluster (\(j = 1, \dots, R\)):
+
+\[
+Y_{ij} \mid \mu_i, \epsilon_i \sim \text{Normal}(\mu_i, \sigma^2)
+\]
+
+The cluster-specific mean \(\mu_i\) incorporates:
+
+\[
+\mu_i = \alpha + \beta X_i + \epsilon_i,
+\]
+
+where:
+- \(\alpha\) is the fixed intercept,
+- \(\beta\) is the fixed effect of treatment (\(X_i = 1\) for treatment, \(X_i = 0\) for control),
+- \(\epsilon_i \sim \text{Normal}(0, \gamma^2)\) is the random cluster effect.
+
+The overall marginal mean for \(Y_{ij}\) is:
+
+\[
+\mathbb{E}[Y_{ij} \mid X_i] = \alpha + \beta X_i.
+\]
+
+### Poisson Extension
+
+In a second modeling framework, \(Y_{ij}\) is assumed to follow a Poisson distribution. Specifically:
+
+\[
+Y_{ij} \sim \text{Poisson}(\mu_i),
+\]
+
+where:
+
+\[
+\log(\mu_i) = \alpha + \beta X_i + \epsilon_i,
+\]
+
+and \(\epsilon_i \sim \text{Normal}(0, \gamma^2)\).
+
+# Aims of the Study
+
+The project consists of the following aims:
+
+## Aim 1: Design Simulation Study
+
+The first aim is to design a simulation study using the ADEMP framework to evaluate different study designs. The framework considers varying numbers of clusters (\(G\)) and observations per cluster (\(R\)) while maintaining a fixed budget (\(B\)).
+
+## Aim 2: Analyze Cost Parameters
+
+The second aim investigates the relationship between:
+- The relative costs \(c_1\) (first observation cost) and \(c_2\) (subsequent observation cost),
+- The underlying data generation parameters (\(\alpha, \beta, \gamma^2, \sigma^2\)).
+
+This analysis identifies optimal configurations for \(G\) and \(R\) to minimize the variance of the estimated treatment effect (\(\hat{\beta}\)).
+
+## Aim 3: Extend to Poisson Outcomes
+
+The third aim extends the simulation to the Poisson model for count outcomes. The primary goal is to explore how the hierarchical Poisson model affects the results and compare it to the Normal hierarchical model.
+
+# Key Questions
+
+- How should the budget (\(B\)) be allocated between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) to minimize the variance of the treatment effect estimate (\(\hat{\beta}\))?
+- How do relative costs (\(c_1, c_2\)) affect the optimal allocation of resources?
+- How does the modeling framework (Normal vs. Poisson) influence the optimal design and the precision of \(\hat{\beta}\)?
+
+# Optimization Framework
+
+The number of clusters (\(G\)) and observations per cluster (\(R\)) are iterated over, constrained by the total budget:
+
+\[
+B = G \cdot c_1 + G \cdot (R - 1) \cdot c_2.
+\]
+
+For each combination of \(G\) and \(R\), data is simulated, and a linear mixed-effects model or Poisson mixed-effects model is fitted to estimate \(\hat{\beta}\). The variance of \(\hat{\beta}\) is calculated across multiple simulations, and the combination of \(G\) and \(R\) that minimizes this variance is identified.
+
+# Conclusion
+
+This project explores the trade-off between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) under realistic cost constraints. By comparing Normal and Poisson hierarchical models, we aim to provide insights into optimal experimental design strategies for cluster randomized trials.
+
+
+
+
+
+
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE,
                   message = FALSE,
@@ -52,6 +154,8 @@ library(cowplot)
 
 # ADMEP
 
+# NORMAL
+
 ```{r}
 library(lme4)
 
@@ -86,8 +190,10 @@ simulate_cluster_data <- function(alpha, beta, gamma2, sigma2, G, R) {
   
   return(data)
 }
+```
 
 
+```{r}
 #' Fit a linear mixed-effects model to the simulated data.
 #'
 #' @param data A data frame containing simulated cluster data with columns `cluster`, `X`, and `Y`.
@@ -97,7 +203,10 @@ fit_model <- function(data) {
   beta_hat <- fixef(model)["X"]
   return(beta_hat)
 }
+```
 
+
+```{r}
 #' Optimize Experimental Design
 #'
 #' Iterates through possible combinations of clusters (G) and observations per cluster (R) to find the optimal design that minimizes the variance of the estimated treatment effect.
@@ -113,7 +222,7 @@ fit_model <- function(data) {
 #' @param save_dir Directory to save each simulation result as an RDS file.
 #'
 #' @return A list containing the optimal combination of G and R (`optimal`) and a data frame of all results (`all_results`).
-optimize_design <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations = 100, save_dir = "simulation_results") {
+optimize_design <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations = 100, save_dir = "normal_simulation_data") {
  
   if (!dir.exists(save_dir)) dir.create(save_dir)
   
@@ -187,16 +296,16 @@ generate_plot <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations = 1
   plot <- ggplot(results$all_results, aes(x = G, y = beta_var)) +
     geom_line(color = "purple3") +
     geom_point(size = .5) +
-    geom_point(data = min_variance_row, aes(x = G, y = beta_var), color = "red", size = 2) +
+    geom_point(data = min_variance_row, aes(x = G, y = beta_var), color = "red", size = 1.5) +
     geom_hline(yintercept = min_variance_row$beta_var, linetype = 2, color = "gray40") +
     geom_vline(xintercept = min_variance_row$G, linetype = 2, color = "gray40") +
     geom_text(
       data = min_variance_row,
       aes(x = G, y = beta_var, label = paste0("G = ", G, ", R= ", R, "\nVar = ", round(beta_var, 4))),
-      vjust = -1, hjust = 1.2, color = "red", size = 2
+      vjust = -1, hjust = 1.2, color = "red", size = 3
     ) +
-    ggtitle(bquote(list(beta==.(beta), gamma^2 == .(gamma2), sigma^2 == .(sigma2),
-                        B == .(B), c1 == .(c1), c2 == .(c2)
+    ggtitle(bquote(list(B == .(B), beta==.(beta), gamma^2 == .(gamma2), sigma^2 == .(sigma2),
+                         c1 == .(c1), c2 == .(c2)
                    ))) +
     labs(
       x = "Number of Clusters (G)",
@@ -212,7 +321,10 @@ generate_plot <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations = 1
   
   return(plot)
 }
+```
 
+
+```{r}
 #' Generate Multiple Plots for Different Parameter Combinations
 #'
 #' Runs simulations and generates plots for multiple combinations of input parameters.
@@ -248,7 +360,7 @@ generate_multiple_plots <- function(input_combinations, iterations = 100) {
 ```
 
 
-```{r, fig.width = 12, fig.height = 6}
+```{r, fig.width = 12, fig.height = 10}
 # Define a set of input combinations
 input_combinations <- list(
   list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 1, B = 5000, c1 = 200, c2 = 5),
@@ -262,11 +374,15 @@ input_combinations <- list(
   list(alpha = 5, beta = 3, gamma2 = 0.8, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
   list(alpha = 5, beta = 3, gamma2 = 0.8, sigma2 = 2, B = 5000, c1 = 100, c2 = 10),
   list(alpha = 5, beta = 3, gamma2 = 0.9, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
-  list(alpha = 5, beta = 3, gamma2 = 0.9, sigma2 = 2, B = 5000, c1 = 100, c2 = 10)
+  list(alpha = 5, beta = 3, gamma2 = 0.9, sigma2 = 2, B = 5000, c1 = 100, c2 = 10),
+  list(alpha = 5, beta = 4, gamma2 = 0.8, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
+  list(alpha = 5, beta = 4, gamma2 = 0.8, sigma2 = 2, B = 5000, c1 = 100, c2 = 10),
+  list(alpha = 5, beta = 4, gamma2 = 0.9, sigma2 = 1, B = 5000, c1 = 200, c2 = 10),
+  list(alpha = 5, beta = 4, gamma2 = 0.9, sigma2 = 2, B = 5000, c1 = 100, c2 = 10)
 ) ########################################## Maybe keep B the same to be comparable? (an to kanw na to valw sthn ekfwnisi twn plots kai na to bgalw apo thn upoekfwnisi tou kathe plot)
 
 # Generate all plots
-plots <- generate_multiple_plots(input_combinations, iterations = 3) 
+plots <- generate_multiple_plots(input_combinations, iterations = 100) 
 
 
 
@@ -278,7 +394,7 @@ library(egg)
 combined_plots = egg::ggarrange(
   plots = plots,
   nrow = 4,
-  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters",
+  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters (Normal)",
   bottom = "Number of clusters (G)",
   left = "Variance of Beta Estimate (beta_var)"
 ) 
@@ -286,6 +402,316 @@ combined_plots = egg::ggarrange(
 
 ```
 
+# POISSON
+
+```{r}
+#' Simulate Poisson data for a cluster randomized trial with a hierarchical structure.
+#'
+#' @param alpha Fixed intercept.
+#' @param beta Fixed effect of treatment.
+#' @param gamma2 Variance of random cluster effects.
+#' @param G Number of clusters.
+#' @param R Number of observations per cluster.
+#' @return A data frame containing simulated cluster data with columns `cluster`, `X`, and `Y`.
+simulate_poisson_cluster_data <- function(alpha, beta, gamma2, G, R) {
+  
+  # Random binary treatment assignment for clusters
+  X <- rbinom(G, size = 1, prob = 0.5)
+  
+  # Random cluster effects
+  epsilon <- rnorm(G, mean = 0, sd = sqrt(gamma2))
+  
+  # Data storage
+  data <- data.frame(cluster = rep(1:G, each = R),
+                     X = rep(X, each = R),
+                     Y = numeric(G * R))
+  
+  # Generate observations for each cluster
+  for (i in 1:G) {
+    log_mu <- alpha + beta * X[i] + epsilon[i]  # Log mean
+    mu <- exp(log_mu)                           # Exponentiate to get the mean
+    data$Y[data$cluster == i] <- rpois(R, lambda = mu)  # Generate Poisson outcomes
+  }
+  
+  return(data)
+}
+
+```
+
+
+```{r}
+library(lme4)
+#' Fit a Poisson mixed-effects model to the simulated data.
+#'
+#' @param data A data frame containing simulated cluster data with columns `cluster`, `X`, and `Y`.
+#' @return The estimated fixed effect (`beta_hat`) for the treatment variable.
+fit_poisson_model <- function(data) {
+  model <- glmer(Y ~ X + (1 | cluster), family = poisson, data = data)
+  beta_hat <- fixef(model)["X"]
+  return(beta_hat)
+}
+
+```
+
+```{r}
+#' Optimize Experimental Design for Poisson Model
+#'
+#' Iterates through possible combinations of clusters (G) and observations per cluster (R)
+#' to find the optimal design that minimizes the variance of the estimated treatment effect.
+#'
+#' @param alpha Fixed intercept.
+#' @param beta Fixed effect of treatment.
+#' @param gamma2 Variance of random cluster effects.
+#' @param B Total budget.
+#' @param c1 Cost of the first sample from a cluster.
+#' @param c2 Cost of additional samples within the same cluster.
+#' @param iterations Number of simulations to run for each combination of G and R.
+#' @param save_dir Directory to save each simulation result as an RDS file.
+#' 
+#' @return A list containing the optimal combination of G and R (`optimal`) and a data frame of all results (`all_results`).
+optimize_poisson_design <- function(alpha, beta, gamma2, B, c1, c2, iterations = 100, save_dir = "poisson_simulation_data") {
+  
+  if (!dir.exists(save_dir)) dir.create(save_dir)
+  
+ 
+  results <- data.frame(G = integer(), R = integer(), beta_mean = numeric(), beta_var = numeric(), 
+                        alpha = numeric(), beta = numeric(), gamma2 = numeric(), 
+                        c1 = numeric(), c2 = numeric(), B = numeric())
+  
+  for (G in 2:(B / c1)) {
+    R <- floor((B - G * c1) / (c2 * G)) + 1
+    if (R < 2) next # Skip if R < 2 (must have at least 2 observations per cluster)
+    
+    beta_hats <- numeric(iterations)
+    
+    combined_data <- data.frame()
+      set.seed(58)
+    for (i in 1:iterations) {
+      data <- simulate_poisson_cluster_data(alpha, beta, gamma2, G, R)
+      beta_hats[i] <- fit_poisson_model(data)
+      
+      # Combine all iterations' data
+      combined_data <- rbind(combined_data, cbind(data, iteration = i))
+    }
+    
+    
+ # Save the combined data for this G and R to a single file
+    file_name <- paste0(save_dir, "/simulation_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2, "_B", B, "_c1-", c1, "_c2-", c2, ".rds")
+    saveRDS(combined_data, file_name)
+    beta_mean <- mean(na.omit(beta_hats))
+    beta_var <- var(na.omit(beta_hats))   
+    
+    
+    results <- rbind(results, data.frame(
+      G = G, R = R, beta_mean = beta_mean, beta_var = beta_var, 
+      alpha = alpha, beta = beta, gamma2 = gamma2, c1 = c1, c2 = c2, B = B
+    ))
+  }
+  
+  # Find the combination with the lowest variance
+  optimal <- results[which.min(results$beta_var), ]
+  return(list(optimal = optimal, all_results = results))
+}
+
+```
+
+
+```{r}
+# Plots for G vs beta_var
+
+#' Create a plot showing the effect of number of clusters (G) on the variance of the beta estimate (beta_var) for a specific combination of input parameters.
+#'
+#' @param alpha Fixed intercept.
+#' @param beta Fixed effect of treatment.
+#' @param gamma2 Variance of random cluster effects.
+#' @param B Total budget.
+#' @param c1 Cost of the first sample from a cluster.
+#' @param c2 Cost of additional samples within the same cluster.
+#' @param iterations Number of simulations to run.
+#' 
+#' @return A ggplot object showing G vs. beta_var, with the minimum variance point highlighted.
+generate_poisson_plot <- function(alpha, beta, gamma2, B, c1, c2, iterations = 100) {
+  # Run the optimization for the Poisson model
+  results <- optimize_poisson_design(alpha, beta, gamma2, B, c1, c2, iterations)
+  min_variance_row <- results$all_results[which.min(results$all_results$beta_var), ]
+  
+  # Create the plot
+  plot <- ggplot(results$all_results, aes(x = G, y = beta_var)) +
+    geom_line(color = "purple") +
+    geom_point(size = 1) +
+    geom_point(data = min_variance_row, aes(x = G, y = beta_var), color = "red", size = 1.5) +
+    geom_hline(yintercept = min_variance_row$beta_var, linetype = "dashed", color = "gray40") +
+    geom_vline(xintercept = min_variance_row$G, linetype = "dashed", color = "gray40") +
+    geom_text(
+      data = min_variance_row,
+      aes(x = G, y = beta_var, label = paste0("G = ", G, ", R = ", R, "\nVar = ", round(beta_var, 4))),
+      vjust = -1, hjust = 1.2, color = "red", size = 3
+    ) +
+    ggtitle(bquote(list(B == .(B), beta == .(beta), gamma^2 == .(gamma2), c1 == .(c1), c2 == .(c2)))) +
+    labs(x = "Number of Clusters (G)", y = "Variance of Beta Estimate (beta_var)") +
+     labs(
+      x = "Number of Clusters (G)",
+      y = "Variance of Beta Estimate (beta_var)"
+    ) + theme_gray() + 
+    theme(panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill = "gray95"),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          plot.title = element_text(size = 9)
+          )
+  
+  return(plot)
+}
+
+```
+
+```{r}
+#' Generate Multiple Plots for Poisson Model
+#'
+#' Runs simulations and generates plots for multiple combinations of input parameters.
+#'
+#' @param input_combinations A list of parameter combinations, where each element is a list containing:
+#'   - `alpha` (Fixed intercept),
+#'   - `beta` (Fixed effect of treatment),
+#'   - `gamma2` (Variance of random cluster effects),
+#'   - `B` (Total budget),
+#'   - `c1` (Cost of the first sample from a cluster),
+#'   - `c2` (Cost of additional samples within the same cluster).
+#' @param iterations Number of simulations to run for each combination.
+#' 
+#' @return A list of ggplot objects, one for each parameter combination.
+generate_multiple_poisson_plots <- function(input_combinations, iterations = 100) {
+  plots <- lapply(input_combinations, function(inputs) {
+    generate_poisson_plot(
+      alpha = inputs$alpha,
+      beta = inputs$beta,
+      gamma2 = inputs$gamma2,
+      B = inputs$B,
+      c1 = inputs$c1,
+      c2 = inputs$c2,
+      iterations = iterations
+    )
+  })
+  return(plots)
+}
+
+```
+
+
+```{r, fig.width = 12, fig.height = 10}
+# Define a set of input combinations for the Poisson model
+input_combinations <- list(
+  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 5000, c1 = 200, c2 = 5),
+  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 5000, c1 = 100, c2 = 5),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 5000, c1 = 200, c2 = 5),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 5000, c1 = 100, c2 = 5),
+  list(alpha = 5, beta = 2, gamma2 = 0.4, B = 5000, c1 = 200, c2 = 5),
+  list(alpha = 5, beta = 2, gamma2 = 0.4, B = 5000, c1 = 100, c2 = 5),
+  list(alpha = 5, beta = 2, gamma2 = 0.5, B = 5000, c1 = 200, c2 = 5),
+  list(alpha = 5, beta = 2, gamma2 = 0.5, B = 5000, c1 = 100, c2 = 5),
+  list(alpha = 5, beta = 3, gamma2 = 0.6, B = 5000, c1 = 200, c2 = 10),
+  list(alpha = 5, beta = 3, gamma2 = 0.6, B = 5000, c1 = 100, c2 = 10),
+  list(alpha = 5, beta = 3, gamma2 = 0.7, B = 5000, c1 = 200, c2 = 10),
+  list(alpha = 5, beta = 3, gamma2 = 0.7, B = 5000, c1 = 100, c2 = 10),
+  list(alpha = 5, beta = 4, gamma2 = 0.8, B = 5000, c1 = 200, c2 = 10),
+  list(alpha = 5, beta = 4, gamma2 = 0.8, B = 5000, c1 = 100, c2 = 10),
+  list(alpha = 5, beta = 4, gamma2 = 0.9, B = 5000, c1 = 200, c2 = 10),
+  list(alpha = 5, beta = 4, gamma2 = 0.9, B = 5000, c1 = 100, c2 = 10)
+)
+
+# Generate Poisson plots for the defined parameter combinations
+poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 100)
+
+# Combine and display the Poisson plots in a grid
+combined_poisson_plots <- egg::ggarrange(
+  plots = poisson_plots,
+  nrow = 4,
+  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters (Poisson)",
+  bottom = "Number of clusters (G)",
+  left = "Variance of Beta Estimate (beta_var)"
+)
+
+```
+
+
+```{r, fig.height = 12, fig.width = 10}
+# For AIM 2
+# Sensitivity Analysis: Cost Ratio (c1/c2) vs Variance of Beta Estimate
+
+# Define varying cost ratios
+cost_ratios <- seq(1.5, 10, by = 0.5)  # Example cost ratios
+alpha <- 5
+beta_list <- c(1, 2, 3, 4)
+gamma2_list <- c(0.2, 0.3, 0.4, 0.5)
+sigma2_list <- c(1,2,1,2)
+B <- 5000  # Fixed budget
+iterations <- 100
+
+sensitivity_plots <- list()
+
+for (i in 1:4){
+
+  beta <- beta_list[i]
+  gamma2 <- gamma2_list[i]
+  sigma2 <- sigma2_list[i]
+  
+# Initialize results storage
+sensitivity_results <- data.frame(c1_c2_ratio = numeric(), beta_var = numeric())
+
+# Iterate over cost ratios
+for (ratio in cost_ratios) {
+  c1 <- 200
+  c2 <- c1 / ratio  # Calculate c2 based on the cost ratio
+  
+  # Optimize design for current ratio
+  poisson_results <- optimize_poisson_design(alpha, beta, gamma2, B, c1, c2, iterations)
+  normal_results <- optimize_design(alpha, beta, sigma2, gamma2, B, c1, c2, iterations)
+  
+  # Store the minimum variance for this cost ratio
+  min_variance_poisson <- min(poisson_results$all_results$beta_var, na.rm = TRUE)
+  min_variance_normal <- min(normal_results$all_results$beta_var, na.rm = TRUE)
+  sensitivity_results <- rbind(sensitivity_results, data.frame(c1_c2_ratio = ratio, 
+                                                               poisson_beta_var = min_variance_poisson,
+                                                               normal_beta_var = min_variance_normal))
+}
+
+normal_title = ifelse(i == 1, "Y ~ Normal Distribution", "")
+poisson_title = ifelse(i == 1, "Y ~ Poisson Distribution", "")
+
+# Plot Sensitivity Analysis
+gnorm <- ggplot(sensitivity_results) +  
+   geom_line(aes(x = c1_c2_ratio, y = normal_beta_var), color = "purple3", size = 1) +
+  geom_point(aes(x = c1_c2_ratio, y = normal_beta_var), size = 2, color = "black") +
+  # geom_text(aes(x = G, y = beta_var, label = paste0("G = ", G, ", R = ", R, "\nVar = ", round(beta_var, 4))),
+  #     vjust = -1, hjust = 1.2, color = "red", size = 3) +
+  labs(
+    title = normal_title
+  ) +
+  theme_minimal() + 
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank()) 
+sensitivity_plots[(i-1)*2+1] <- gnorm
+
+gpois <- ggplot(sensitivity_results) +  
+  geom_line(aes(x = c1_c2_ratio, y = poisson_beta_var), color = "purple3", size = 1) +
+  geom_point(aes(x = c1_c2_ratio, y = poisson_beta_var), size = 2, color = "black") +
+  geom_text() +
+  labs(
+    title = poisson_title
+  ) +
+  theme_minimal() +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank()) 
+sensitivity_plots[i*2] <- gpois  
+
+}
+
+
+egg::ggarrange(plots = sensitivity_plots, 
+               nrow=4, 
+               top = "Sensitivity Analysis: Cost Ratio vs Variance of Beta Estimate (B = 5000)",
+               bottom = "Cost Ratio (c1 / c2)",
+               left = "Variance of Beta Estimate")
+```
 
 
 ## Aims and Objectives
