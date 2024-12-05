@@ -336,29 +336,30 @@ optimize_design <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations =
     if (G >= n) next # Skip if the number of clusters is greater than or equal to the total observations
     
    beta_hats <- numeric(iterations)
-    #combined_data <- data.frame()  # To store all iterations' data for this G and R
+   combined_data <- data.frame()  # To store all iterations' data for this G and R
    
-   num_cores = detectCores() - 1
-   cl = makeCluster(num_cores)
-   registerDoParallel(cl)
-   
-   clusterExport(cl, c("simulate_cluster_data", "fit_model","optimize_design"))
-
-   
+   # num_cores = detectCores() - 1
+   # cl = makeCluster(num_cores)
+   # registerDoParallel(cl)
+   # 
+   # clusterExport(cl, c("simulate_cluster_data", "fit_model","optimize_design"))
+   # 
+   # 
     set.seed(58)
-     combined_data <- foreach (i = 1:iterations, .combine = rbind, .packages = c("lme4", "dplyr")) %dopar% {
+     # combined_data <- foreach (i = 1:iterations, .combine = rbind, .packages = c("lme4", "dplyr")) %dopar% {
+    for (i in  1:iterations){
       data <- simulate_cluster_data(alpha, beta, gamma2, sigma2, G, R)
       beta_hats[i] <- fit_model(data)
       
-      data =  cbind(data, iteration = i)
-      
-      return(data)
+      # data =  cbind(data, iteration = i)
+      # 
+      # return(data)
       
       # Combine all iterations' data
-      #combined_data <- rbind(combined_data, cbind(data, iteration = i))
+      combined_data <- rbind(combined_data, cbind(data, iteration = i))
      }
      
-     stopCluster(cl)
+     #stopCluster(cl)
     
     # Save the combined data for this G and R to a single file
     file_name <- paste0(save_dir, "/simulation_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2, "_sigma2-", sigma2, "_B", B, "_c1-", c1, "_c2-", c2, ".rds")
@@ -373,6 +374,13 @@ optimize_design <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations =
   
   optimal <- results[which.min(results$beta_var), ]
   return(list(optimal = optimal, all_results = results))
+  
+  results_path = paste0("normal_results")
+  if (!dir.exists(results_path)) dir.create(results_path)
+  
+ result_file_name = paste0("/results_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2, 
+                           "_sigma2-", sigma2, "_B", B, "_c1-", c1, "_c2-", c2, ".csv")
+  write.csv(results, paste0(results_path, result_file_name))
 }
 
 ```
@@ -490,7 +498,7 @@ input_combinations <- list(
 )
 
 # Generate all plots
-plots <- generate_multiple_plots(input_combinations, iterations = 20) 
+plots <- generate_multiple_plots(input_combinations, iterations = 5) 
 
 
 
@@ -543,7 +551,6 @@ simulate_poisson_cluster_data <- function(alpha, beta, gamma2, G, R) {
 
 
 ```{r}
-library(lme4)
 #' Fit a Poisson mixed-effects model to the simulated data.
 #'
 #' @param data A data frame containing simulated cluster data with columns `cluster`, `X`, and `Y`.
@@ -624,6 +631,13 @@ optimize_poisson_design <- function(alpha, beta, gamma2, B, c1, c2, iterations =
   # Find the combination with the lowest variance
   optimal <- results[which.min(results$beta_var), ]
   return(list(optimal = optimal, all_results = results))
+  
+  results_path = paste0("poisson_results")
+  if (!dir.exists(results_path)) dir.create(results_path)
+  
+ result_file_name = paste0("/results_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2,
+                           "_B", B, "_c1-", c1, "_c2-", c2, ".csv")
+  write.csv(results, paste0(results_path, result_file_name))
 }
 
 ```
@@ -734,7 +748,7 @@ input_combinations <- list(
 )
 
 # Generate Poisson plots for the defined parameter combinations
-poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 20)
+poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 10)
 
 # Combine and display the Poisson plots in a grid
 combined_poisson_plots <- egg::ggarrange(
@@ -759,7 +773,7 @@ beta_list <- c(1, 10, 1, 10)
 gamma2_list <- c(0.2, 0.4, 0.6, 0.8)
 sigma2_list <- c(1,2,1,2)
 B <- 5000  
-iterations <- 2
+iterations <- 5
 
 sensitivity_plots <- list()
 
