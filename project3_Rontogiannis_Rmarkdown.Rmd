@@ -10,7 +10,7 @@ output:
     df_print: paged
 subtitle: "Practical Data Analysis - Project 3: A Simulation Study"
 link-citations: true
-abstract: "**Purpose**: \n\n**Methods**: \n  \n**Results**:\n\n**Conclusions**:\n"
+#abstract: "**Purpose**: \n\n**Methods**: \n \n**Results**:\n\n**Conclusions**:\n"
 #geometry: margin = 0.75in
 ---
 
@@ -19,6 +19,39 @@ abstract: "**Purpose**: \n\n**Methods**: \n  \n**Results**:\n\n**Conclusions**:\
 title: "Overview of the Experimental Design Simulation Study"
 output: pdf_document
 ---
+
+# Abstract
+
+## Purpose
+############################ na to valw panw
+The purpose of this study is to design and evaluate cluster-randomized trials under budget constraints using simulation methods. We aim to estimate the treatment effect (\( \beta \)) of an intervention on an outcome variable (\( Y \)) while optimizing study designs to minimize variance. Two hierarchical models for \( Y \)—Normal and Poisson—are considered, reflecting different data-generating mechanisms. We explore how design parameters, such as the number of clusters (\( G \)) and observations per cluster (\( R \)), as well as cost ratios (\( c_1/c_2 \)), impact the precision of \( \beta \) estimates.
+
+## Methods
+
+Using the ADEMP framework (Aims, Data-generating mechanism, Estimand, Method, Performance measures), we conducted a simulation study under two scenarios:
+
+  1. **Normal Model**: \( Y \sim N(\mu, \sigma^2) \), where \( \mu = \alpha + \beta X + \epsilon \), and \( \epsilon \sim N(0, \gamma^2) \).
+
+  2. **Poisson Model**: \( Y \sim \text{Poisson}(\mu) \), where \( \log(\mu) = \alpha + \beta X + \epsilon \), and \( \epsilon \sim N(0, \gamma^2) \).
+
+For a fixed total budget (\( B \)), possible combinations of \( G \) and \( R \) were calculated, and data were simulated for 100 iterations per combination. The models were fitted using mixed-effects regression:
+
+  - Normal model: \( Y \sim X + (1 | \text{cluster}) \) with `lmer`.
+  
+  - Poisson model: \( Y \sim X + (1 | \text{cluster}) \) with `glmer`.
+
+Performance metrics included variance, bias, mean squared error (MSE), coverage probability, and confidence interval width. Sensitivity analyses were performed to examine the effects of varying cost ratios (\( c_1/c_2 \)) and variance parameters (\( \sigma^2 \), \( \gamma^2 \)).
+
+## Results
+
+In the Normal model, the variance of \( \beta \) estimates decreased with increasing \( G \) but was sensitive to cost constraints and within-cluster variability (\( \sigma^2 \)). In contrast, the Poisson model showed higher variance for small \( G \) and \( R \), emphasizing the importance of larger sample sizes per cluster. Optimal designs (i.e., \( G, R \) combinations minimizing variance) were identified for both models.
+
+Sensitivity analysis revealed that increasing the cost ratio (\( c_1/c_2 \)) shifted optimal designs toward fewer clusters with more observations per cluster, especially under the Poisson model. Coverage probabilities for 95% confidence intervals were close to nominal levels for both models, but slightly lower for the Poisson model in scenarios with small sample sizes.
+
+## Conclusions
+
+This simulation study demonstrates the utility of hierarchical models and the ADEMP framework in optimizing cluster-randomized trials under budget constraints. The findings highlight the trade-offs between the number of clusters and observations per cluster in achieving precise treatment effect estimates. Sensitivity analysis underscores the influence of cost structures on optimal designs. The Poisson model, while more appropriate for count data, requires careful consideration of sample size to ensure robust estimates. These insights provide valuable guidance for designing efficient and cost-effective cluster-randomized trials in practice.
+
 
 # Introduction
 
@@ -157,13 +190,13 @@ library(gridExtra)
 library(leaps)
 library(ggplot2)
 library(cowplot)
+library(egg)
+library(doParallel)
+library(foreach)
+library(ggpubr)
 ```
 
 # Introduction
-
-# ADMEP
-
----
 
 # ADEMP Framework
 
@@ -172,8 +205,6 @@ library(cowplot)
 1. **Aim 1**: Design a simulation study using the ADEMP framework to evaluate potential study designs under a Normal model.
 2. **Aim 2**: Explore relationships between the cost ratio \( c_1/c_2 \) and design parameters to assess their impact on performance.
 3. **Aim 3**: Extend the simulation study to the Poisson hierarchical model to compare results with the Normal model.
-
----
 
 ## Data-Generating Mechanisms
 
@@ -190,13 +221,10 @@ library(cowplot)
 3. **Budget Constraints**:
     The total cost of the design is \( B = G \cdot c_1 + G \cdot R \cdot c_2 \), where \( G \) is the number of clusters and \( R \) is the number of observations per cluster.
 
----
-
 ## Estimands
 
 - The **target estimand** is \( \beta \), the fixed effect of treatment, representing the average treatment effect.
 
----
 
 ## Methods
 
@@ -225,14 +253,10 @@ library(cowplot)
 5. **Sensitivity Analysis**:
     - Vary \( c_1/c_2 \) and parameters \( \gamma^2, \sigma^2 \) to examine their effects on design performance.
 
----
-
 
 # NORMAL
 
 ```{r}
-library(lme4)
-
 #' Simulate data for a cluster randomized trial with a hierarchical structure.
 #'
 #' @param alpha Fixed intercept.
@@ -312,15 +336,29 @@ optimize_design <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations =
     if (G >= n) next # Skip if the number of clusters is greater than or equal to the total observations
     
    beta_hats <- numeric(iterations)
-    combined_data <- data.frame()  # To store all iterations' data for this G and R
+    #combined_data <- data.frame()  # To store all iterations' data for this G and R
+   
+   num_cores = detectCores() - 1
+   cl = makeCluster(num_cores)
+   registerDoParallel(cl)
+   
+   clusterExport(cl, c("simulate_cluster_data", "fit_model","optimize_design"))
+
+   
     set.seed(58)
-    for (i in 1:iterations) {
+     combined_data <- foreach (i = 1:iterations, .combine = rbind, .packages = c("lme4", "dplyr")) %dopar% {
       data <- simulate_cluster_data(alpha, beta, gamma2, sigma2, G, R)
       beta_hats[i] <- fit_model(data)
       
+      data =  cbind(data, iteration = i)
+      
+      return(data)
+      
       # Combine all iterations' data
-      combined_data <- rbind(combined_data, cbind(data, iteration = i))
-    }
+      #combined_data <- rbind(combined_data, cbind(data, iteration = i))
+     }
+     
+     stopCluster(cl)
     
     # Save the combined data for this G and R to a single file
     file_name <- paste0(save_dir, "/simulation_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2, "_sigma2-", sigma2, "_B", B, "_c1-", c1, "_c2-", c2, ".rds")
@@ -342,10 +380,6 @@ optimize_design <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations =
 
 ```{r}
 # Plots for G vs beta_var
-
-library(ggplot2)
-library(gridExtra)
-
 
 #' Create a plot showing the effect of number of clusters (G) on the variance of the beta estimate (beta_var) for a specific combination of input parameters.
 #'
@@ -453,17 +487,12 @@ input_combinations <- list(
   list(alpha = 5, beta = 10, gamma2 = 0.8, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
   list(alpha = 5, beta = 10, gamma2 = 0.9, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
   list(alpha = 5, beta = 10, gamma2 = 0.9, sigma2 = 2, B = 5000, c1 = 300, c2 = 10)
-) ########################################## Maybe keep B the same to be comparable? (an to kanw na to valw sthn ekfwnisi twn plots kai na to bgalw apo thn upoekfwnisi tou kathe plot)
+)
 
 # Generate all plots
-plots <- generate_multiple_plots(input_combinations, iterations = 2) 
+plots <- generate_multiple_plots(input_combinations, iterations = 20) 
 
 
-
-library(patchwork)
-library(ggpubr)
-library(cowplot)
-library(egg)
 
 combined_plots = egg::ggarrange(
   plots = plots,
@@ -558,17 +587,27 @@ optimize_poisson_design <- function(alpha, beta, gamma2, B, c1, c2, iterations =
     
     beta_hats <- numeric(iterations)
     
-    combined_data <- data.frame()
-      set.seed(58)
-    for (i in 1:iterations) {
+    #combined_data <- data.frame()
+     num_cores = detectCores() - 2
+    cl = makeCluster(num_cores)
+    registerDoParallel(cl)
+    
+    clusterExport(cl, c("simulate_poisson_cluster_data", "fit_poisson_model","optimize_poisson_design"))
+    
+    set.seed(58)
+
+    combined_data <- foreach (i = 1:iterations, .combine = rbind, .packages = c("lme4", "dplyr")) %dopar% {
       data <- simulate_poisson_cluster_data(alpha, beta, gamma2, G, R)
       beta_hats[i] <- fit_poisson_model(data)
       
-      # Combine all iterations' data
-      combined_data <- rbind(combined_data, cbind(data, iteration = i))
+      data = cbind(data, iteration = i)
+      
+      return(data)
+      
+      #combined_data <- rbind(combined_data, cbind(data, iteration = i))
     }
     
-    
+    stopCluster(cl)
  # Save the combined data for this G and R to a single file
     file_name <- paste0(save_dir, "/simulation_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2, "_B", B, "_c1-", c1, "_c2-", c2, ".rds")
     saveRDS(combined_data, file_name)
@@ -695,7 +734,7 @@ input_combinations <- list(
 )
 
 # Generate Poisson plots for the defined parameter combinations
-poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 2)
+poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 20)
 
 # Combine and display the Poisson plots in a grid
 combined_poisson_plots <- egg::ggarrange(
@@ -724,17 +763,20 @@ iterations <- 2
 
 sensitivity_plots <- list()
 
-for (i in 1:4){
+for (j in 1:4){
 
-  beta <- beta_list[i]
-  gamma2 <- gamma2_list[i]
-  sigma2 <- sigma2_list[i]
+  beta <- beta_list[j]
+  gamma2 <- gamma2_list[j]
+  sigma2 <- sigma2_list[j]
   
-# Initialize results storage
-sensitivity_results <- data.frame(c1_c2_ratio = numeric(), beta_var = numeric())
+num_cores = detectCores() - 2
+cl = makeCluster(num_cores)
+registerDoParallel(cl)
+
 
 # Iterate over cost ratios
-for (ratio in cost_ratios) {
+ sensitivity_results<- foreach(i = 1:10, .combine = rbind, .packages = c("lme4", "dplyr")) %dopar% {
+   ratio = cost_ratios[i]
   c1 <- 200
   c2 <- c1 / ratio  # Calculate c2 based on the cost ratio
   
@@ -745,37 +787,53 @@ for (ratio in cost_ratios) {
   # Store the minimum variance for this cost ratio
   min_variance_poisson <- min(poisson_results$all_results$beta_var, na.rm = TRUE)
   min_variance_normal <- min(normal_results$all_results$beta_var, na.rm = TRUE)
-  sensitivity_results <- rbind(sensitivity_results, data.frame(c1_c2_ratio = ratio, 
-                                                               poisson_beta_var = min_variance_poisson,
-                                                               normal_beta_var = min_variance_normal))
-}
+  
+  result_df =  data.frame(
+    c1_c2_ratio = ratio,
+    poisson_beta_var = min_variance_poisson,
+    normal_beta_var = min_variance_normal
+  )
+  
+  return(result_df)
+ }
+ 
+ stopCluster(cl)
 
-normal_title = ifelse(i == 1, "Y ~ Normal Distribution", "")
-poisson_title = ifelse(i == 1, "Y ~ Poisson Distribution", "")
+normal_title = ifelse(j == 1, "Y ~ Normal Distribution", "")
+poisson_title = ifelse(j == 1, "Y ~ Poisson Distribution", "")
 
 # Plot Sensitivity Analysis
 gnorm <- ggplot(sensitivity_results) +  
    geom_line(aes(x = c1_c2_ratio, y = normal_beta_var), color = "purple3", size = 1) +
   geom_point(aes(x = c1_c2_ratio, y = normal_beta_var), size = 1, color = "black") +
-  # geom_text(aes(x = G, y = beta_var, label = paste0("G = ", G, ", R = ", R, "\nVar = ", round(beta_var, 4))),
-  #     vjust = -1, hjust = 1.1, color = "red", size = 3) +
+  annotate("text", x = max(sensitivity_results$c1_c2_ratio)*0.9, 
+           y = max(sensitivity_results$normal_beta_var) * 0.9, 
+           label = paste0("\nbeta = ", beta, 
+                          "\ngamma^2 = ", gamma2, 
+                          "\nsigma^2 = ", sigma2), 
+           hjust = 1, size = 3, color = "black") + 
   labs(
     title = normal_title
   ) +
   theme_minimal() + 
   theme(axis.title.x = element_blank(), axis.title.y = element_blank()) 
-sensitivity_plots[[(i-1)*2+1]] <- gnorm
+sensitivity_plots[[(j-1)*2+1]] <- gnorm
 
 gpois <- ggplot(sensitivity_results) +  
   geom_line(aes(x = c1_c2_ratio, y = poisson_beta_var), color = "purple3", size = 1) +
   geom_point(aes(x = c1_c2_ratio, y = poisson_beta_var), size = 1, color = "black") +
-  #geom_text() +
+  annotate("text", x = max(sensitivity_results$c1_c2_ratio) *0.9, 
+           y = max(sensitivity_results$normal_beta_var) * 0.9, 
+           label = paste0("\nbeta = ", beta, 
+                          "\ngamma^2 = ", gamma2
+                          ), 
+           hjust = 1, size = 3, color = "black") + 
   labs(
     title = poisson_title
   ) +
   theme_minimal() +
   theme(axis.title.x = element_blank(), axis.title.y = element_blank()) 
-sensitivity_plots[[i*2]] <- gpois  
+sensitivity_plots[[j*2]] <- gpois  
 
 }
 
