@@ -562,7 +562,7 @@ combined_normal_results <- data.frame()
 
 # Loop through each file, read it, and extract the row with the lowest variance
 for (file in csv_files) {
-  data <- read.csv(file, row.names = FALSE)
+  data <- read.csv(file, row.names = NULL)
  
     min_variance_row <- data[which.min(data$beta_var), ]
     
@@ -585,7 +585,7 @@ combined_normal_results = combined_normal_results %>%
 
 kable_table <- combined_normal_results %>%
   knitr::kable("latex",
-    caption = "Summary of Optimal Design Performance Across Various Data-Generating Settings for Y∼Normal",
+    caption = "Summary of Optimal Design Performance Across Various Data-Generating Settings for Y following Normal Distribution",
     col.names = c(
       "c1",
       "c2",
@@ -914,7 +914,7 @@ combined_poisson_results <- data.frame()
 
 # Loop through each file, read it, and extract the row with the lowest variance
 for (file in csv_files) {
-  data <- read.csv(file, row.names = FALSE)
+  data <- read.csv(file, row.names = NULL)
   
   # Ensure beta_var exists in the file to identify the row with the lowest variance
   if ("beta_var" %in% names(data)) {
@@ -937,10 +937,9 @@ combined_poisson_results = combined_poisson_results %>%
     power = round(power, 4)
   )
 
-print(combined_poisson_results)
-kable_table <- combined_normal_results[-1] %>%
+kable_table <- combined_poisson_results %>%
   knitr::kable("latex",
-    caption = "Summary of Optimal Design Performance Across Various Data-Generating Settings for Y ~ Poisson",
+    caption = "Summary of Optimal Design Performance Across Various Data-Generating Settings for Y following Poisson Distribution",
     col.names = c(
       "c1",
       "c2",
