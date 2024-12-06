@@ -1,5 +1,5 @@
 ---
-title: "\\textbf{Simulation}\n\n\\vspace{1cm} \n"
+title: "\\textbf{Optimizing Experimental Design in Cluster Randomized Trials under Budget Constraints: A Simulation Study Using Hierarchical Normal and Poisson Models}\n\n\\vspace{1cm} \n"
 author: "Aristofanis Rontogiannis"
 date: "2024-11-27"
 output:
@@ -10,162 +10,173 @@ output:
     df_print: paged
 subtitle: "Practical Data Analysis - Project 3: A Simulation Study"
 link-citations: true
-#abstract: "**Purpose**: \n\n**Methods**: \n \n**Results**:\n\n**Conclusions**:\n"
+header-includes: 
+  - "\\usepackage{xcolor}"
+abstract: |
+  **Purpose**: The purpose of this study is to design and evaluate cluster-randomized trials under budget constraints using simulation methods. We aim to estimate the treatment effect (\( \beta \)) of an intervention on an outcome variable (\( Y \)) while optimizing study designs to minimize variance. Two hierarchical models for \( Y \)—Normal and Poisson—are considered, reflecting different data-generating mechanisms. We explore how design parameters, such as the number of clusters (\( G \)) and observations per cluster (\( R \)), as well as cost ratios (\( c_1/c_2 \)), impact the precision of \( \beta \) estimates.
+
+  **Methods**: We conducted a simulation study using the ADEMP framework to evaluate experimental designs under two models: a Normal model for continuous outcomes and a Poisson model for count data. Both models incorporated fixed and random effects to account for treatment and cluster variability.
+
+  Using a fixed budget, combinations of clusters and observations per cluster were simulated across 100 iterations. Mixed-effects regression models were fitted to estimate the treatment effect, with performance assessed using variance, bias, mean squared error, coverage probability and power. Sensitivity analyses explored the impact of varying costs and variance parameters on design performance, providing insights into optimal resource allocation and the differences between the two modeling frameworks.
+  
+  **Results**: In the Normal model, the variance of \( \beta \) estimates decreased with increasing \( G \) but was sensitive to cost constraints and within-cluster variability (\( \sigma^2 \)). In contrast, the Poisson model showed higher variance for small \( G \) and \( R \), emphasizing the importance of larger sample sizes per cluster. Optimal designs (i.e., \( G, R \) combinations minimizing variance) were identified for both models.++++++++++++++++++++++++
+
+  Sensitivity analysis revealed that increasing the cost ratio (\( c_1/c_2 \)) shifted optimal designs toward fewer clusters with more observations per cluster, especially under the Poisson model. Coverage probabilities for 95% confidence intervals were close to nominal levels for both models, but slightly lower for the Poisson model in scenarios with small sample sizes.+++++++++++++++++++++
+  
+  **Conclusions**: This simulation study demonstrates the utility of hierarchical models and the ADEMP framework in optimizing cluster-randomized trials under budget constraints. The findings highlight the trade-offs between the number of clusters and observations per cluster in achieving precise treatment effect estimates. Sensitivity analysis underscores the influence of cost structures on optimal designs. The Poisson model, while more appropriate for count data, requires careful consideration of sample size to ensure robust estimates. These insights provide valuable guidance for designing efficient and cost-effective cluster-randomized trials in practice.
+  
+bibliography: References.bib
+
 #geometry: margin = 0.75in
 ---
 
 
----
-title: "Overview of the Experimental Design Simulation Study"
-output: pdf_document
----
+# \textcolor{violet}{Introduction}
 
-# Abstract
+In experimental design, particularly in the context of cluster-randomized trials, optimizing resource allocation is a critical step in achieving reliable and efficient results. Such trials often involve grouping observations into clusters, where each cluster is assigned entirely to either a treatment or control group. The challenge lies in determining the optimal number of clusters and observations per cluster within a fixed budget, accounting for cost differences between the first observation in a cluster and subsequent ones. Previous studies, such as Bachmann et al. (2007) [@bachmann2007methods], have highlighted the importance of balancing cost-effectiveness and statistical power in cluster-randomized trials, underscoring the need for efficient design strategies.
 
-## Purpose
-############################ na to valw panw
-The purpose of this study is to design and evaluate cluster-randomized trials under budget constraints using simulation methods. We aim to estimate the treatment effect (\( \beta \)) of an intervention on an outcome variable (\( Y \)) while optimizing study designs to minimize variance. Two hierarchical models for \( Y \)—Normal and Poisson—are considered, reflecting different data-generating mechanisms. We explore how design parameters, such as the number of clusters (\( G \)) and observations per cluster (\( R \)), as well as cost ratios (\( c_1/c_2 \)), impact the precision of \( \beta \) estimates.
+This project is a collaboration with Dr. Zhijin Wu in the Biostatistics Department and focuses on a simulation-based evaluation of optimal experimental designs under both Normal and Poisson hierarchical frameworks. The primary goal is to assess how different design parameters, including the variance components and cost structures, influence the precision and accuracy of the estimated treatment effect (\(\beta\)) on an outcome variable \(Y\). This work builds on foundational methods for sample size calculation in cluster-randomized trials, as discussed by van Breukelen and Candel (2012) [@van2012calculating], who demonstrated the potential for simplifying such calculations without sacrificing efficiency.
 
-## Methods
+The study uses the ADEMP (Aims, Data-Generating Mechanism, Estimand, Method, Performance Measures) framework to systematically simulate and analyze these designs. In the Normal framework, outcomes are assumed to follow a Normal distribution with fixed and random effects representing treatment differences and cluster-level variability, respectively. In the Poisson framework, outcomes are count data modeled with a log-link function and similar random effects. Sensitivity to cost structures is particularly relevant in hierarchical models, as noted by Prus et al. (2020) [@prus2020optimal], who emphasized the importance of optimal design in random-effects settings for improving prediction and inference.
 
-Using the ADEMP framework (Aims, Data-generating mechanism, Estimand, Method, Performance measures), we conducted a simulation study under two scenarios:
+Performance metrics such as variance, bias, mean squared error (MSE), coverage probability, and power are used to evaluate and compare designs. Additionally, sensitivity analyses explore the effect of varying cost ratios and variance components. By addressing these challenges, the project aims to provide insights into efficient resource allocation strategies in cluster-randomized trials and to compare the performance of Normal and Poisson models in estimating the treatment effect. This study is particularly relevant in fields such as biostatistics and health sciences, where resource constraints and data variability are common considerations.
 
-  1. **Normal Model**: \( Y \sim N(\mu, \sigma^2) \), where \( \mu = \alpha + \beta X + \epsilon \), and \( \epsilon \sim N(0, \gamma^2) \).
+# \textcolor{violet}{ADEMP Framework}
 
-  2. **Poisson Model**: \( Y \sim \text{Poisson}(\mu) \), where \( \log(\mu) = \alpha + \beta X + \epsilon \), and \( \epsilon \sim N(0, \gamma^2) \).
+## Aims and Objectives of the Study
 
-For a fixed total budget (\( B \)), possible combinations of \( G \) and \( R \) were calculated, and data were simulated for 100 iterations per combination. The models were fitted using mixed-effects regression:
+This study is guided by three primary aims:
 
-  - Normal model: \( Y \sim X + (1 | \text{cluster}) \) with `lmer`.
-  
-  - Poisson model: \( Y \sim X + (1 | \text{cluster}) \) with `glmer`.
+**Aim 1: Design a Simulation Study** The first aim involves designing a simulation study using the ADEMP framework to explore different study designs. The framework evaluates combinations of \(G\) (number of clusters) and \(R\) (number of observations per cluster) under a fixed budget (\(B\)). The objective is to identify designs that minimize the variance of the treatment effect estimate (\(\hat{\beta}\)).
 
-Performance metrics included variance, bias, mean squared error (MSE), coverage probability, and confidence interval width. Sensitivity analyses were performed to examine the effects of varying cost ratios (\( c_1/c_2 \)) and variance parameters (\( \sigma^2 \), \( \gamma^2 \)).
+**Aim 2: Analyze the impact of cost structure and other data generating parameters** The second aim investigates how variations in cost parameters (\(c_1, c_2\)) and data generation parameters (\(\alpha, \beta, \gamma^2, \sigma^2\)) influence the design. This analysis examines the optimal allocation of resources to maximize study efficiency.
 
-## Results
+**Aim 3: Extend to Poisson Outcomes** The third aim extends the simulation framework to the Poisson model for count outcomes. The goal is to assess how the choice of model (Normal vs. Poisson) affects the optimal study design and the precision of \(\hat{\beta}\).
 
-In the Normal model, the variance of \( \beta \) estimates decreased with increasing \( G \) but was sensitive to cost constraints and within-cluster variability (\( \sigma^2 \)). In contrast, the Poisson model showed higher variance for small \( G \) and \( R \), emphasizing the importance of larger sample sizes per cluster. Optimal designs (i.e., \( G, R \) combinations minimizing variance) were identified for both models.
+#### Key Questions
 
-Sensitivity analysis revealed that increasing the cost ratio (\( c_1/c_2 \)) shifted optimal designs toward fewer clusters with more observations per cluster, especially under the Poisson model. Coverage probabilities for 95% confidence intervals were close to nominal levels for both models, but slightly lower for the Poisson model in scenarios with small sample sizes.
+1. How should the budget (\(B\)) be allocated between the number of clusters (\(G\)) and the observations per cluster (\(R\)) to minimize the variance of \(\hat{\beta}\)?
+2. How do relative costs (\(c_1, c_2\)) impact resource allocation and study precision?
+3. How does the choice of modeling framework (Normal vs. Poisson) affect the performance of the optimal design?
 
-## Conclusions
-
-This simulation study demonstrates the utility of hierarchical models and the ADEMP framework in optimizing cluster-randomized trials under budget constraints. The findings highlight the trade-offs between the number of clusters and observations per cluster in achieving precise treatment effect estimates. Sensitivity analysis underscores the influence of cost structures on optimal designs. The Poisson model, while more appropriate for count data, requires careful consideration of sample size to ensure robust estimates. These insights provide valuable guidance for designing efficient and cost-effective cluster-randomized trials in practice.
-
-
-# Introduction
-
-This project is a collaboration with Dr. Zhijin Wu in the Biostatistics Department. The goal is to design a simulation study to investigate optimal experimental design under budget constraints for a cluster randomized trial. Observations will be assigned to either the treatment or control group, and the primary objective is to estimate the treatment effect (\(\beta\)) on an outcome variable \(Y\).
-
-# Hierarchical Structure of the Study
-
-In the trial, clusters of observations are formed, and each cluster is assigned entirely to either the treatment or control group. The budget (\(B\)) constrains the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) due to varying costs:
-
-  - The first sample from a cluster costs \(c_1\).
-  
-  - Subsequent samples from the same cluster cost \(c_2\), where \(c_2 < c_1\).
-
-## Modeling Assumptions
-
-We assume a hierarchical structure for the outcome \(Y_{ij}\), where \(i\) indexes clusters (\(i = 1, \dots, G\)) and \(j\) indexes observations within a cluster (\(j = 1, \dots, R\)):
-
-\[
-Y_{ij} \mid \mu_i, \epsilon_i \sim \text{Normal}(\mu_i, \sigma^2)
-\]
-
-The cluster-specific mean \(\mu_i\) incorporates:
-
-\[
-\mu_i = \alpha + \beta X_i + \epsilon_i,
-\]
-
-where:
-
-  - \(\alpha\) is the fixed intercept,
-  
-  - \(\beta\) is the fixed effect of treatment (\(X_i = 1\) for treatment, \(X_i = 0\) for control),
-  
-  - \(\epsilon_i \sim \text{Normal}(0, \gamma^2)\) is the random cluster effect.
-
-The overall marginal mean for \(Y_{ij}\) is:
-
-\[
-\mathbb{E}[Y_{ij} \mid X_i] = \alpha + \beta X_i.
-\]
-
-### Poisson Extension
-
-In a second modeling framework, \(Y_{ij}\) is assumed to follow a Poisson distribution. Specifically:
-
-\[
-Y_{ij} \sim \text{Poisson}(\mu_i),
-\]
-
-where:
-
-\[
-\log(\mu_i) = \alpha + \beta X_i + \epsilon_i,
-\]
-
-and \(\epsilon_i \sim \text{Normal}(0, \gamma^2)\).
-
-# Aims of the Study
-
-The project consists of the following aims:
-
-## Aim 1: Design Simulation Study
-
-The first aim is to design a simulation study using the ADEMP framework to evaluate different study designs. The framework considers varying numbers of clusters (\(G\)) and observations per cluster (\(R\)) while maintaining a fixed budget (\(B\)).
-
-## Aim 2: Analyze Cost Parameters
-
-The second aim investigates the relationship between:
-
-  - The relative costs \(c_1\) (first observation cost) and \(c_2\) (subsequent observation cost),
-  
-  - The underlying data generation parameters (\(\alpha, \beta, \gamma^2, \sigma^2\)).
-
-This analysis identifies optimal configurations for \(G\) and \(R\) to minimize the variance of the estimated treatment effect (\(\hat{\beta}\)).
-
-## Aim 3: Extend to Poisson Outcomes
-
-The third aim extends the simulation to the Poisson model for count outcomes. The primary goal is to explore how the hierarchical Poisson model affects the results and compare it to the Normal hierarchical model.
-
-# Key Questions
-
-  - How should the budget (\(B\)) be allocated between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) to minimize the variance of the treatment effect estimate (\(\hat{\beta}\))?
-  
-  - How do relative costs (\(c_1, c_2\)) affect the optimal allocation of resources?
-  
-  - How does the modeling framework (Normal vs. Poisson) influence the optimal design and the precision of \(\hat{\beta}\)?
-
-# Optimization Framework
-
-The number of clusters (\(G\)) is iterated over, and for each (\(G\)) we calculate observations per cluster (\(R\)) , constrained by the total budget:
-
-\[
-B = G \cdot c_1 + G \cdot (R - 1) \cdot c_2.
-\]
-
-For each combination of \(G\) and \(R\), data is simulated, and a linear mixed-effects model or Poisson mixed-effects model is fitted to estimate \(\hat{\beta}\). The variance of \(\hat{\beta}\) is calculated across multiple simulations, and the combination of \(G\) and \(R\) that minimizes this variance is identified.
-
-# Conclusion
-
-This project explores the trade-off between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) under realistic cost constraints. By comparing Normal and Poisson hierarchical models, we aim to provide insights into optimal experimental design strategies for cluster randomized trials.
-
-
-
-## Aims and Objectives
 
 ## Data Generating Mechanisms
 
-## Estimands/Targets of Analysis
+### Budget Constraint and Cost Structure
 
-## Methods to Evaluate
+In this study, the total cost of the design is \( B = G \cdot c_1 + G \cdot R \cdot c_2 \), where \( G \) is the number of clusters and \( R \) is the number of observations per cluster. 
+
+Observations are grouped into clusters, and each cluster is fully assigned to either the treatment or control group. The allocation of resources is constrained by a fixed budget (\(B\)), which determines the number of clusters (\(G\)) and the number of observations per cluster (\(R\)). The cost structure reflects practical considerations:
+
+- The first observation from a cluster incurs a higher cost (\(c_1\)), reflecting the setup costs for the cluster.
+- Subsequent observations within the same cluster cost less (\(c_2\)), as they leverage shared resources (\(c_2 < c_1\)).
+
+This hierarchical framework mirrors real-world constraints in resource allocation, where balancing the trade-off between the number of clusters and the size of each cluster is critical.
+
+### Hierarchical Modeling Assumptions
+
+The outcome \(Y_{ij}\) is modeled using a hierarchical structure, where \(i\) indexes clusters (\(i = 1, \dots, G\)) and \(j\) indexes observations within a cluster (\(j = 1, \dots, R\)).
+
+#### 1. Normal Model
+
+For continuous outcomes, \(Y_{ij}\) is assumed to follow a Normal distribution:
+\[
+Y_{ij} \mid \mu_i, \sigma^2 \sim \text{Normal}(\mu_i, \sigma^2),
+\]
+where \(\mu_i\) represents the cluster-specific mean and \(\sigma^2\) is the variance of observations within each cluster. The cluster-specific mean \(\mu_i\) is modeled as:
+\[
+\mu_i = \alpha + \beta X_i + \epsilon_i,
+\]
+with the following components:
+
+- \(\alpha\): Fixed intercept, representing the baseline outcome for the control group.
+- \(\beta\): Fixed effect of the treatment, representing the average difference in outcomes between the treatment (\(X_i = 1\)) and control (\(X_i = 0\)) groups.
+- \(\epsilon_i \sim \text{Normal}(0, \gamma^2)\): Random cluster effects, accounting for between-cluster variability.
+
+The overall marginal mean of \(Y_{ij}\) for a given treatment group is:
+\[
+\mathbb{E}[Y_{ij} \mid X_i] = \alpha + \beta X_i,
+\]
+which represents the expected outcome averaged across all clusters.
+
+#### 2. Poisson Extension
+
+For count outcomes, \(Y_{ij}\) is modeled using a Poisson distribution:
+\[
+Y_{ij} \sim \text{Poisson}(\mu_i),
+\]
+where \(\mu_i\) is the mean count for cluster \(i\). The mean is linked to the predictors through a log-linear relationship:
+\[
+\log(\mu_i) = \alpha + \beta X_i + \epsilon_i,
+\]
+with the same hierarchical structure for the random effects:
+\[
+\epsilon_i \sim \text{Normal}(0, \gamma^2).
+\]
+This extension accommodates the analysis of count data while retaining the hierarchical structure of the model.
+
+## Estimand
+
+The **target estimand** is \( \beta \), the fixed effect of treatment, representing the average treatment effect between the treatment and control groups.
+
+The main aim of this study is to determine the optimal combination of the number of clusters (\(G\)) and observations per cluster (\(R\)) that minimizes the variance of the treatment effect estimate, \(\hat{\beta}\), while adhering to budget constraints. This optimization ensures that the study design maximizes statistical efficiency for detecting treatment effects.
+
+The chosen estimand, \(\hat{\beta}\), is unbiased under the hierarchical Normal and Poisson frameworks, as reflected in the empirical results. Tables 1 and 2 demonstrate that the empirical bias across all parameter settings is relatively low, highlighting the robustness of the simulation framework in estimating the treatment effect without systematic errors. This makes the optimization of \(\hat{\beta}\)'s variance a crucial step in achieving reliable inference.
+
+
+## Methods to Evaluate 
+
+To address these questions, the study uses an optimization framework to systematically evaluate potential designs:
+
+1. **Budget Constraint**: For a given budget \(B\), the relationship between \(G\) and \(R\) is given by:
+\[
+B = G \cdot c_1 + G \cdot (R - 1) \cdot c_2.
+\]
+This constraint ensures that the total cost of the design does not exceed the available budget.
+
+2. **Simulation**: For each combination of \(G\) and \(R\):
+   - Simulate data based on the specified Normal or Poisson model.
+   - Fit a mixed-effects model to estimate \(\hat{\beta}\).
+
+3. **Performance Metrics**: Evaluate the performance of each design using the following metrics:
+   - Variance of \(\hat{\beta}\): A measure of the precision of the treatment effect estimate.
+   - Bias: The difference between the average \(\hat{\beta}\) and the true \(\beta\).
+   - Mean Squared Error (MSE): Combines both variance and bias to evaluate overall accuracy.
+   - Coverage: The proportion of confidence intervals that include the true \(\beta\).
+   - Power: The proportion of iterations where the treatment effect is statistically significant.
+   
+    Note: The Performance Measures above are discussed in further details in the next subsection.
+
+4. **Optimal Design**: Identify the combination of \(G\) and \(R\) that minimizes the variance of \(\hat{\beta}\), balancing precision and cost.
+
+5. **Sensitivity Analysis**: Vary \( c_1/c_2 \) and parameters \( \gamma^2, \sigma^2 \) to examine their effects on design performance.
+
+This framework is applied to both Normal and Poisson models, allowing for a comparative analysis of their performance under varying scenarios.
 
 ## Performance Measures
 
-# Results
+-   **Bias**: The average difference between the estimated value and the true parameter, representing systematic error. $$
+    \text{Bias} = \mathbb{E}[\hat{\beta_{\alpha}}] - \beta_1
+    $$ $$
+    \text{Estimate of Bias} = \frac{1}{n_\text{sim}} \sum_{i=1}^{n_\text{sim}} \hat{\beta_{\alpha}}_i - \beta_1
+    $$ 
+
+-   **Mean Squared Error (MSE)**: The average squared difference between the estimated value and the true parameter, combining bias and variance. $$
+    \text{MSE} = \mathbb{E}[(\hat{\beta_{\alpha}} - \beta_1)^2]
+    $$ $$
+    \text{Estimate of MSE} = \frac{1}{n_\text{sim}} \sum_{i=1}^{n_\text{sim}} (\hat{\beta_{\alpha}}_i - \beta_1)^2
+    $$ 
+-   **Coverage Probability**: The proportion of confidence intervals for $\beta_1$ that include the true value.\
+    $$
+    \text{Coverage} = \Pr(\hat{\beta_{\alpha}}_{\text{ low}} \leq \beta_1 \leq \hat{\beta_{\alpha}}_{\text{ upp}})
+    $$ $$
+    \text{Estimate of Coverage} = \frac{1}{n_\text{sim}} \sum_{i=1}^{n_\text{sim}} \mathbb{I}(\hat{\beta_{\alpha}}_{\text{ low},i} \leq \theta \leq \hat{\beta_{\alpha}}_{\text{ upp},i})
+    $$
+-   **Power (or Type I Error)**: The proportion of simulations where the null hypothesis is rejected, representing the test's ability to detect true effects (power) or the likelihood of false positives (Type I error). $$
+    \text{Rejection Percentage} = \Pr(p_i \leq \alpha)
+    $$ $$
+    \text{Estimate of Rejection Percentage} = \frac{1}{n_\text{sim}} \sum_{i=1}^{n_\text{sim}} \mathbb{I}(p_i \leq \alpha)
+    $$ 
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = FALSE,
@@ -196,66 +207,9 @@ library(foreach)
 library(ggpubr)
 library(lme4)
 ```
-
-# Introduction
-
-# ADEMP Framework
-
-## Aims
-
-1. **Aim 1**: Design a simulation study using the ADEMP framework to evaluate potential study designs under a Normal model.
-2. **Aim 2**: Explore relationships between the cost ratio \( c_1/c_2 \) and design parameters to assess their impact on performance.
-3. **Aim 3**: Extend the simulation study to the Poisson hierarchical model to compare results with the Normal model.
-
-## Data-Generating Mechanisms
-
-1. **Normal Model**:
-    \[
-    Y_{ij} \sim N(\mu_{ij}, \sigma^2), \quad \mu_{ij} = \alpha + \beta X_i + \epsilon_i, \quad \epsilon_i \sim N(0, \gamma^2)
-    \]
-
-2. **Poisson Model**:
-    \[
-    Y_{ij} \sim \text{Poisson}(\mu_{ij}), \quad \log(\mu_{ij}) = \alpha + \beta X_i + \epsilon_i, \quad \epsilon_i \sim N(0, \gamma^2)
-    \]
-
-3. **Budget Constraints**:
-    The total cost of the design is \( B = G \cdot c_1 + G \cdot R \cdot c_2 \), where \( G \) is the number of clusters and \( R \) is the number of observations per cluster.
-
-## Estimands
-
-- The **target estimand** is \( \beta \), the fixed effect of treatment, representing the average treatment effect.
-
-
-## Methods
-
-### Simulation Workflow
-
-1. **Inputs**:
-    - Fixed parameters: \( \alpha, \beta, \gamma^2, \sigma^2, B, c_1, c_2 \).
-    - Iterate over possible \( G \): \( G = 2, 3, \dots, \lfloor B / c_1 \rfloor \).
-    - Compute \( R \): \( R = \lfloor (B - G \cdot c_1) / (G \cdot c_2) \rfloor + 1 \).
     
-2. **Data Generation**:
-    - Simulate \( Y_{ij} \) for both Normal and Poisson models using hierarchical structures.
 
-3. **Model Fitting**:
-    - Fit \( lmer(Y \sim X + (1| \text{cluster})) \) for Normal data.
-    - Fit \( glmer(Y \sim X + (1| \text{cluster}), \text{family = poisson}) \) for Poisson data.
-
-4. **Performance Measures**:
-    - Calculate:
-        - **Bias**: \( \mathbb{E}[\hat{\beta}] - \beta \)
-        - **Variance**: \( \text{Var}(\hat{\beta}) \)
-        - **MSE**: \( \text{Bias}^2 + \text{Variance} \)
-        - **Coverage Probability**: Proportion of confidence intervals containing \( \beta \)
-        - **Confidence Interval Width**
-
-5. **Sensitivity Analysis**:
-    - Vary \( c_1/c_2 \) and parameters \( \gamma^2, \sigma^2 \) to examine their effects on design performance.
-
-
-# NORMAL
+# \textcolor{violet}{Results}
 
 ```{r}
 #' Simulate data for a cluster randomized trial with a hierarchical structure.
@@ -610,9 +564,6 @@ kable_table <- combined_normal_results %>%
 kable_table
 
 ```
-
-
-# POISSON
 
 ```{r}
 #' Simulate Poisson data for a cluster randomized trial with a hierarchical structure.
@@ -1063,15 +1014,19 @@ egg::ggarrange(plots = sensitivity_plots,
 
 
 
-# Conclusion and Limits
+# \textcolor{violet}{Conclusion and Limits}
+
+This project explores the trade-off between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) under realistic cost constraints. By comparing Normal and Poisson hierarchical models, we aim to provide insights into optimal experimental design strategies for cluster randomized trials. ++++++++++
+
 
 # Data Privacy and Code Availability
 
-The analysis .... The replication code can be found at <https://github.com/AristofanisR/Practical_Data_Analysis_Project3>
+This project is a collaboration with Dr. Zhijin Wu in the Biostatistics Department. The simulation code, simulation data and simulation results can be found at <https://github.com/AristofanisR/Practical_Data_Analysis_Project3>
 
 \newpage
 
 # References
+<div id="refs"></div>
 
 \newpage
 
