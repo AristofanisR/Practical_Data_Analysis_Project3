@@ -17,11 +17,11 @@ abstract: |
 
   **Methods**: We conducted a simulation study using the ADEMP framework to evaluate experimental designs under two models: a Normal model for continuous outcomes and a Poisson model for count data. Both models incorporated fixed and random effects to account for treatment and cluster variability.
 
-  Using a fixed budget, combinations of clusters and observations per cluster were simulated across 100 iterations. Mixed-effects regression models were fitted to estimate the treatment effect, with performance assessed using variance, bias, mean squared error, coverage probability and power. Sensitivity analyses explored the impact of varying costs and variance parameters on design performance, providing insights into optimal resource allocation and the differences between the two modeling frameworks.
+  Using a fixed budget, combinations of clusters and observations per cluster were simulated across 50 iterations. Mixed-effects regression models were fitted to estimate the treatment effect, with performance assessed using variance, bias, mean squared error, coverage probability and power. Sensitivity analyses explored the impact of varying costs and variance parameters on design performance, providing insights into optimal resource allocation and the differences between the two modeling frameworks.
   
-  **Results**: In the Normal model, the variance of \( \beta \) estimates decreased with increasing \( G \) but was sensitive to cost constraints and within-cluster variability (\( \sigma^2 \)). In contrast, the Poisson model showed higher variance for small \( G \) and \( R \), emphasizing the importance of larger sample sizes per cluster. Optimal designs (i.e., \( G, R \) combinations minimizing variance) were identified for both models.++++++++++++++++++++++++
+  **Results**: In the Normal model, the variance of \(\beta\) estimates decreased sharply with increasing \(G\), though the benefit diminished at higher cluster counts, indicating diminishing returns. Variance was particularly sensitive to cost constraints, especially the fixed cost (\(c_1\)), and within-cluster variability (\(\sigma^2\)), where higher \(\sigma^2\) led to increased overall variance. Additionally, oscillatory trends in variance across different cost ratios (\(c_1/c_2\)) suggested that resource allocation decisions have a more significant impact on design efficiency in this model. In contrast, the Poisson model exhibited higher variance for small \(G\) and \(R\), but variance stabilized more quickly with increasing \(G\). Notably, the Poisson model showed robustness to changes in the cost ratio, with variance remaining largely unaffected across scenarios, indicating that cost trade-offs between clusters and observations play a smaller role for Poisson outcomes.
 
-  Sensitivity analysis revealed that increasing the cost ratio (\( c_1/c_2 \)) shifted optimal designs toward fewer clusters with more observations per cluster, especially under the Poisson model. Coverage probabilities for 95% confidence intervals were close to nominal levels for both models, but slightly lower for the Poisson model in scenarios with small sample sizes.+++++++++++++++++++++
+  Optimal designs, defined as combinations of \(G\) and \(R\) that minimized variance, were identified for both models. For the Normal model, these designs favored a balance of moderate cluster numbers and reasonable within-cluster sample sizes, while the Poisson model often supported designs with fewer clusters but larger sample sizes per cluster. Sensitivity analysis revealed that increasing the cost ratio (\(c_1/c_2\)) shifted optimal designs toward fewer clusters with more observations per cluster, particularly in the Normal model. Coverage probabilities for 95% confidence intervals were close to nominal levels in both models, although they were slightly lower for the Poisson model in scenarios with small sample sizes or high cluster-level variability (\(\gamma^2\)). Power remained consistently high across most settings, emphasizing the robustness and reliability of the proposed designs in both frameworks. These results underscore the importance of tailoring experimental designs to the outcome distribution and cost structure for efficient and precise resource allocation.
   
   **Conclusions**: This simulation study demonstrates the utility of hierarchical models and the ADEMP framework in optimizing cluster-randomized trials under budget constraints. The findings highlight the trade-offs between the number of clusters and observations per cluster in achieving precise treatment effect estimates. Sensitivity analysis underscores the influence of cost structures on optimal designs. The Poisson model, while more appropriate for count data, requires careful consideration of sample size to ensure robust estimates. These insights provide valuable guidance for designing efficient and cost-effective cluster-randomized trials in practice.
   
@@ -211,6 +211,12 @@ library(lme4)
 
 # \textcolor{violet}{Results}
 
+This analysis examines the effect of the number of clusters (\(G\)) and other design parameters on the performance metrics of cluster-randomized trials under a Normal distribution framework. The plots below clearly illustrate that increasing the number of clusters (\(G\)) substantially reduces the variance of the estimated treatment effect (\(\hat{\beta}\)) initially, reflecting improved precision. However, this improvement diminishes as \(G\) continues to increase, showing that there is a threshold beyond which additional clusters provide minimal benefit. Across the various parameter settings, the optimal \(G\) values, minimizing the variance of \(\hat{\beta}\), typically fall between 13 and 19 clusters. Scenarios with higher fixed costs (\(c_1\)) or lower per-observation costs (\(c_2\)) tend to result in fewer optimal clusters, as seen in the subplots. Additionally, high cluster-level variability (\(\gamma^2\)) significantly increases the overall variance, emphasizing the need to consider variability when allocating resources.
+
+The table provides further insights into design performance by summarizing key metrics such as variance, bias, MSE, coverage probability, and power across various parameter configurations. The estimated treatment effect (\(\hat{\beta}\)) remains close to the true \(\beta\), with minimal bias across all settings. Variance and MSE are lowest for larger clusters (\(G\)) and smaller cluster-level variability (\(\gamma^2\)). In contrast, higher \(\gamma^2\) values or fewer clusters result in poorer performance, as shown in various settings. Coverage probabilities remain relatively high, except in high-variability cases, where slight reductions are observed. Power is consistently high, often reaching 1.00, except in scenarios with fewer clusters and higher variability.
+
+These findings highlight the trade-offs between cost, number of clusters, and statistical performance in cluster-randomized trials. While increasing \(G\) improves precision and reduces variance, practical constraints such as cost and diminishing returns beyond a certain threshold must be considered. Additionally, the computational intensity of these simulations was significant, with some configurations requiring over six hours to execute 100 iterations on a personal computer. For this reason, some results were generated with 50 iterations instead.
+
 ```{r}
 #' Simulate data for a cluster randomized trial with a hierarchical structure.
 #'
@@ -377,6 +383,7 @@ optimize_design <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations =
 ```
 
 
+
 ```{r}
 # Plots for G vs beta_var
 
@@ -470,33 +477,33 @@ generate_multiple_plots <- function(input_combinations, iterations = 100) {
 ```{r, fig.width = 12, fig.height = 10}
 # Define a set of input combinations
 input_combinations <- list(
-  list(alpha = 5, beta = 1, gamma2 = 0.2, sigma2 = 1, B = 5000, c1 = 200, c2 = 40),
-  list(alpha = 5, beta = 1, gamma2 = 0.2, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
-  list(alpha = 5, beta = 1, gamma2 = 0.3, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
-  list(alpha = 5, beta = 1, gamma2 = 0.3, sigma2 = 2, B = 5000, c1 = 300, c2 = 10),
-  list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 1, B = 5000, c1 = 200, c2 = 40),
-  list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
-  list(alpha = 5, beta = 1, gamma2 = 0.5, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
-  list(alpha = 5, beta = 1, gamma2 = 0.5, sigma2 = 2, B = 5000, c1 = 300, c2 = 10),
-  list(alpha = 5, beta = 10, gamma2 = 0.6, sigma2 = 1, B = 5000, c1 = 200, c2 = 40),
-  list(alpha = 5, beta = 10, gamma2 = 0.6, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
-  list(alpha = 5, beta = 10, gamma2 = 0.7, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
-  list(alpha = 5, beta = 10, gamma2 = 0.7, sigma2 = 2, B = 5000, c1 = 300, c2 = 10),
-  list(alpha = 5, beta = 10, gamma2 = 0.8, sigma2 = 1, B = 5000, c1 = 200, c2 = 40),
-  list(alpha = 5, beta = 10, gamma2 = 0.8, sigma2 = 2, B = 5000, c1 = 200, c2 = 20),
-  list(alpha = 5, beta = 10, gamma2 = 0.9, sigma2 = 1, B = 5000, c1 = 300, c2 = 20),
-  list(alpha = 5, beta = 10, gamma2 = 0.9, sigma2 = 2, B = 5000, c1 = 300, c2 = 10)
+  list(alpha = 5, beta = 1, gamma2 = 0.2, sigma2 = 1, B = 3000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 1, gamma2 = 0.2, sigma2 = 2, B = 3000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, sigma2 = 1, B = 3000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, sigma2 = 2, B = 3000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 1, B = 3000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 1, gamma2 = 0.4, sigma2 = 2, B = 3000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.5, sigma2 = 1, B = 3000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.5, sigma2 = 2, B = 3000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 10, gamma2 = 0.6, sigma2 = 1, B = 3000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 10, gamma2 = 0.6, sigma2 = 2, B = 3000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.7, sigma2 = 1, B = 3000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.7, sigma2 = 2, B = 3000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 10, gamma2 = 0.8, sigma2 = 1, B = 3000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 10, gamma2 = 0.8, sigma2 = 2, B = 3000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.9, sigma2 = 1, B = 3000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.9, sigma2 = 2, B = 3000, c1 = 300, c2 = 10)
 )
 
 # Generate all plots
-plots <- generate_multiple_plots(input_combinations, iterations = 2) 
+plots <- generate_multiple_plots(input_combinations, iterations = 50) 
 
 
 
 combined_plots = egg::ggarrange(
   plots = plots,
   nrow = 4,
-  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters with B = 5000 (Normal Distribution case)",
+  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters with B = 3000 (Normal Distribution case)",
   bottom = "Number of clusters (G)",
   left = "Variance of Beta Estimate (beta_var)"
 ) 
@@ -564,6 +571,14 @@ kable_table <- combined_normal_results %>%
 kable_table
 
 ```
+
+
+
+This analysis examines the effect of the number of clusters (\(G\)) and other design parameters on the variance of the estimated treatment effect (\(\hat{\beta}\)) under a Poisson distribution framework. The plots show a clear relationship between the number of clusters (\(G\)) and the precision of \(\hat{\beta}\). Variance decreases sharply as \(G\) increases, particularly for small \(G\), but the rate of reduction slows with larger cluster counts, indicating diminishing returns. Across different parameter configurations, the optimal \(G\) minimizing variance is typically in the range of 15–22 clusters, depending on the cost parameters (\(c_1\) and \(c_2\)) and variance components (\(\sigma^2\) and \(\gamma^2\)). However, with higher fixed costs (\(c_1 = 300\)), the optimal number of clusters shifts lower to balance resource constraints, as seen in cases where \(G = 15\) or \(16\) provides the best trade-off. Higher cluster-level variability (\(\gamma^2\)) leads to an overall increase in variance, emphasizing its significant role in determining the precision of \(\hat{\beta}\).
+
+The table provides additional insights by summarizing key metrics such as variance, bias, mean squared error (MSE), coverage probability, and power. The estimated treatment effect (\(\hat{\beta}\)) remains close to the true \(\beta\) in most cases, with minimal bias across all settings. Variance and MSE increase with higher cluster-level variability (\(\gamma^2\)) or fewer clusters (\(G\)). Coverage probabilities are robust, typically close to the nominal 95%, but slight reductions occur in high-variability settings. Power is consistently high across most configurations, approaching 1.00, except in scenarios with very few clusters (\(G < 13\)) or high variability, where power declines.
+
+Overall, the findings demonstrate that increasing \(G\) improves precision and reduces variance, but these improvements taper off with larger cluster counts, making it critical to balance the number of clusters and resource constraints. Similarly as with the Normal case, computational constraints were also a consideration, as running simulations with 100 iterations for each parameter setting required substantial time, making it more reasonable to use 50 iterations.
 
 ```{r}
 #' Simulate Poisson data for a cluster randomized trial with a hierarchical structure.
@@ -821,32 +836,32 @@ generate_multiple_poisson_plots <- function(input_combinations, iterations = 100
 ```{r, fig.width = 12, fig.height = 10}
 # Define a set of input combinations for the Poisson model
 input_combinations <- list(
-  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 5000, c1 = 200, c2 = 40),
-  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 5000, c1 = 200, c2 = 20),
-  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 5000, c1 = 300, c2 = 20),
-  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 5000, c1 = 300, c2 = 10),
-  list(alpha = 5, beta = 1, gamma2 = 0.4, B = 5000, c1 = 200, c2 = 40),
-  list(alpha = 5, beta = 1, gamma2 = 0.4, B = 5000, c1 = 200, c2 = 20),
-  list(alpha = 5, beta = 1, gamma2 = 0.5, B = 5000, c1 = 300, c2 = 20),
-  list(alpha = 5, beta = 1, gamma2 = 0.5, B = 5000, c1 = 300, c2 = 10),
-  list(alpha = 5, beta = 10, gamma2 = 0.6, B = 5000, c1 = 200, c2 = 40),
-  list(alpha = 5, beta = 10, gamma2 = 0.6, B = 5000, c1 = 200, c2 = 20),
-  list(alpha = 5, beta = 10, gamma2 = 0.7, B = 5000, c1 = 300, c2 = 20),
-  list(alpha = 5, beta = 10, gamma2 = 0.7, B = 5000, c1 = 300, c2 = 10),
-  list(alpha = 5, beta = 10, gamma2 = 0.8, B = 5000, c1 = 200, c2 = 40),
-  list(alpha = 5, beta = 10, gamma2 = 0.8, B = 5000, c1 = 200, c2 = 20),
-  list(alpha = 5, beta = 10, gamma2 = 0.9, B = 5000, c1 = 300, c2 = 20),
-  list(alpha = 5, beta = 10, gamma2 = 0.9, B = 5000, c1 = 300, c2 = 10)
+  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 3000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 1, gamma2 = 0.2, B = 3000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 3000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.3, B = 3000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 1, gamma2 = 0.4, B = 3000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 1, gamma2 = 0.4, B = 3000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.5, B = 3000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 1, gamma2 = 0.5, B = 3000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 10, gamma2 = 0.6, B = 3000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 10, gamma2 = 0.6, B = 3000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.7, B = 3000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.7, B = 3000, c1 = 300, c2 = 10),
+  list(alpha = 5, beta = 10, gamma2 = 0.8, B = 3000, c1 = 200, c2 = 40),
+  list(alpha = 5, beta = 10, gamma2 = 0.8, B = 3000, c1 = 200, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.9, B = 3000, c1 = 300, c2 = 20),
+  list(alpha = 5, beta = 10, gamma2 = 0.9, B = 3000, c1 = 300, c2 = 10)
 )
 
 # Generate Poisson plots for the defined parameter combinations
-poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 2)
+poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 50)
 
 # Combine and display the Poisson plots in a grid
 combined_poisson_plots <- egg::ggarrange(
   plots = poisson_plots,
   nrow = 4,
-  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters with B = 5000 (Poisson Distribution Case)",
+  top = "Effect of G on the Variance of Beta Estimate Across Different Parameters with B = 3000 (Poisson Distribution Case)",
   bottom = "Number of clusters (G)",
   left = "Variance of Beta Estimate (beta_var)"
 )
@@ -917,6 +932,12 @@ kable_table
 
 ```
 
+This sensitivity analysis examines the impact of the cost ratio (\(c_1 / c_2\)) on the variance of the estimated treatment effect (\(\hat{\beta}\)) under Normal and Poisson distributions across different parameter settings. For the Normal distribution, variance shows noticeable fluctuations across cost ratios, with trends depending on the variance components (\(\gamma^2\) and \(\sigma^2\)) and the magnitude of the treatment effect (\(\beta\)). Higher cluster-level variability (\(\gamma^2\)) and larger treatment effects (\(\beta\)) consistently lead to greater overall variance. The variability across cost ratios suggests that the balance between fixed costs (\(c_1\)) and per-observation costs (\(c_2\)) can influence the efficiency of the design. Some cost ratios, achieve marginally lower variance than others. Despite this, the variance remains relatively stable within a certain range, indicating that the cost ratio has a modest but detectable influence on design performance for Normal distributions.
+
+In contrast, the variance of \(\hat{\beta}\) under the Poisson distribution remains remarkably stable across all cost ratios, as seen in the flat trends across the panels. The results suggest that the cost ratio has minimal influence on the precision of \(\hat{\beta}\) for Poisson outcomes, even in scenarios with higher cluster-level variability (\(\gamma^2\)). Even in cases with higher \(\gamma^2\), the variance remains consistent, further emphasizing the robustness of Poisson distributions to cost allocation differences.
+
+Overall, the findings reveal distinct behaviors for the two distributions. Variance in the Normal distribution is more sensitive to changes in the cost ratio, suggesting that careful consideration of cost allocation between clusters and observations can improve design efficiency in this setting. On the other hand, variance in the Poisson distribution is largely unaffected by cost ratio changes, indicating that resource allocation strategies for Poisson outcomes do not need to prioritize the balance between \(c_1\) and \(c_2\) as heavily. These results highlight the importance of tailoring resource allocation strategies to the distribution of the outcome variable to optimize experimental design.
+
 ```{r, fig.height = 8, fig.width = 12, fig.align = 'center', out.width = "85%"}
 # For AIM 2
 # Sensitivity Analysis: Cost Ratio (c1/c2) vs Variance of Beta Estimate
@@ -927,8 +948,8 @@ alpha <- 5
 beta_list <- c(1, 10, 1, 10)
 gamma2_list <- c(0.2, 0.4, 0.6, 0.8)
 sigma2_list <- c(1,2,1,2)
-B <- 5000  
-iterations <- 2
+B <- 3000  
+iterations <- 50
 
 sensitivity_plots <- list()
 
@@ -1005,7 +1026,7 @@ sensitivity_plots[[j*2]] <- gpois
 
 egg::ggarrange(plots = sensitivity_plots, 
                nrow = 4, 
-               top = "Sensitivity Analysis: Cost Ratio vs Variance of Beta Estimate (B = 5000)",
+               top = "Sensitivity Analysis: Cost Ratio vs Variance of Beta Estimate (B = 3000)",
                bottom = "Cost Ratio (c1 / c2)",
                left = "Variance of Beta Estimate")
 ```
@@ -1014,9 +1035,15 @@ egg::ggarrange(plots = sensitivity_plots,
 
 
 
-# \textcolor{violet}{Conclusion and Limits}
+# \textcolor{violet}{Conclusion and Limitations}
 
-This project explores the trade-off between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) under realistic cost constraints. By comparing Normal and Poisson hierarchical models, we aim to provide insights into optimal experimental design strategies for cluster randomized trials. ++++++++++
+This project explores the critical trade-off between the number of clusters (\(G\)) and the number of observations per cluster (\(R\)) under realistic cost constraints, offering practical insights for optimizing resource allocation in cluster-randomized trials. By systematically comparing Normal and Poisson hierarchical models, we highlight key differences in how variance, cost structures, and design parameters interact to influence the precision and efficiency of treatment effect estimates. 
+
+The findings emphasize the importance of tailoring experimental designs to the distributional characteristics of the outcome variable. For Normal models, where variance is more sensitive to cost ratios and within-cluster variability (\(\sigma^2\)), careful allocation of resources between clusters and observations can significantly improve design efficiency. For Poisson models, the relative stability of variance across cost ratios simplifies design decisions, allowing for more flexibility in resource allocation. These insights contribute to a deeper understanding of how cost, variability, and sample size interact, ultimately guiding the development of robust and cost-effective experimental designs for applications in biostatistics, public health, and beyond.
+
+One limitation of this study is the computational constraint that restricted our ability to explore all possible combinations of $c_1$, $c_2$, and the variance parameters $\sigma^2$ and $\gamma^2$ in greater detail. While we performed simulations using 100 iterations for each parameter setting, the computational demands of the process were substantial, with some configurations requiring over six hours to execute on a personal computer (even with the use of parallel computing at some cases). This made it unfeasible to comprehensively evaluate the interplay of all parameters under a wider range of conditions. As a result, the limited scope of parameter settings may reduce the generalizability of the findings to other experimental designs or real-world scenarios. 
+
+To address this, future studies could leverage advanced computational techniques, such as cloud computing, or high-performance computing clusters, to enable a more exhaustive exploration of design parameters. Furthermore, incorporating optimization algorithms or surrogate modeling methods could help identify key parameter interactions more efficiently, thereby enhancing the robustness and applicability of the findings. Despite these limitations, the insights gained from the current study could provide a valuable foundation for guiding resource allocation in cluster-randomized trials.
 
 
 # Data Privacy and Code Availability
