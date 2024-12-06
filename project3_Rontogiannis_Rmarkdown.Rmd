@@ -194,6 +194,7 @@ library(egg)
 library(doParallel)
 library(foreach)
 library(ggpubr)
+library(lme4)
 ```
 
 # Introduction
@@ -298,8 +299,17 @@ simulate_cluster_data <- function(alpha, beta, gamma2, sigma2, G, R) {
 #' @return The estimated fixed effect (`beta_hat`) for the treatment variable.
 fit_model <- function(data) {
   model <- lmer(Y ~ X + (1 | cluster), data = data)
-  beta_hat <- fixef(model)["X"]
-  return(beta_hat)
+  if ("X" %in% names(fixef(model))) {
+      beta_hat <- fixef(model)["X"]
+      CI = confint(model, parm = "X", level = 0.95)
+  t_value = coef(summary(model))["X","t value"] 
+    } else {
+      beta_hat <- NA  # Assign NA if X is not in the model
+      CI = NA
+  t_value = NA 
+    }
+  
+  return(list(beta_hat, CI, t_value))
 }
 ```
 
@@ -324,63 +334,90 @@ optimize_design <- function(alpha, beta, gamma2, sigma2, B, c1, c2, iterations =
  
   if (!dir.exists(save_dir)) dir.create(save_dir)
   
-  results <- data.frame(G = integer(), R = integer(), beta_mean = numeric(), beta_var = numeric(), 
+  results <- data.frame(G = integer(), R = integer(), 
+                        beta_mean = numeric(), beta_var = numeric(), 
                         alpha = numeric(), beta = numeric(), gamma2 = numeric(), 
-                        sigma2 = numeric(), c1 = numeric(), c2 = numeric(), B = numeric())
+                        sigma2 = numeric(), c1 = numeric(), c2 = numeric(), 
+                        B = numeric())
   
-  for (G in 2:(B / c1)) {
+   performance_table <- data.frame()
+  
+  for (G in 2:floor(B / c1)) {
     R <- floor((B - G * c1) / (c2 * G)) + 1
     if (R < 2) next # Skip if R < 2 (must have at least 2 observations per cluster)
     
     n <- G * R
     if (G >= n) next # Skip if the number of clusters is greater than or equal to the total observations
-    
    beta_hats <- numeric(iterations)
-   combined_data <- data.frame()  # To store all iterations' data for this G and R
-   
-   # num_cores = detectCores() - 1
-   # cl = makeCluster(num_cores)
-   # registerDoParallel(cl)
-   # 
-   # clusterExport(cl, c("simulate_cluster_data", "fit_model","optimize_design"))
-   # 
-   # 
-    set.seed(58)
-     # combined_data <- foreach (i = 1:iterations, .combine = rbind, .packages = c("lme4", "dplyr")) %dopar% {
-    for (i in  1:iterations){
-      data <- simulate_cluster_data(alpha, beta, gamma2, sigma2, G, R)
-      beta_hats[i] <- fit_model(data)
-      
-      # data =  cbind(data, iteration = i)
-      # 
-      # return(data)
-      
-      # Combine all iterations' data
-      combined_data <- rbind(combined_data, cbind(data, iteration = i))
-     }
-     
-     #stopCluster(cl)
+    coverage_count <- 0
+    power_count <- 0
+    combined_data <- data.frame()  # To store all iterations' data for this G and R
     
-    # Save the combined data for this G and R to a single file
+    set.seed(58)
+    for (i in 1:iterations) {
+      # Simulate data and fit the model
+      data <- simulate_cluster_data(alpha, beta, gamma2, sigma2, G, R)
+      lmer.model <- fit_model(data)
+      beta_hat = lmer.model[[1]]
+      ci = lmer.model[[2]]
+      t_value = lmer.model[[3]]
+      
+      # Skip iteration if beta_hat, ci, or t_value is NA
+      if (is.na(beta_hat) ||
+          is.na(ci[1]) || is.na(ci[2]) || is.na(t_value)) {
+        next
+      }
+      
+      # Store beta_hat
+      beta_hats[i] <- beta_hat
+      
+      # Calculate metrics for this iteration
+      ci_lower <- ci[1]
+      ci_upper <- ci[2]
+      if (ci_lower <= beta && beta <= ci_upper) coverage_count <- coverage_count + 1
+      if (abs(t_value)>1.96) power_count <- power_count + 1
+      
+      # Save iteration-specific data
+      combined_data <- rbind(combined_data, cbind(data, iteration = i))
+    }
+    
+    # Save combined data for this G and R
     file_name <- paste0(save_dir, "/simulation_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2, "_sigma2-", sigma2, "_B", B, "_c1-", c1, "_c2-", c2, ".rds")
     saveRDS(combined_data, file_name)
-    beta_mean <- mean(na.omit(beta_hats))
-    beta_var <- var(na.omit(beta_hats))
     
+    # Aggregate metrics over all iterations
+    beta_mean <- mean(beta_hats, na.rm = TRUE)
+    beta_var <- var(beta_hats, na.rm = TRUE)
+    bias <- beta_mean - beta
+    mse <- mean((beta_hats - beta)^2, na.rm = TRUE)
+    coverage <- coverage_count / iterations
+    power <- power_count / iterations
+    
+    # Append results to performance table
+    performance_table <- rbind(performance_table, data.frame(
+      c1 = c1, c2 = c2, sigma2 = sigma2, gamma2 = gamma2, G = G, R = R,
+      beta = beta, beta_hat = beta_mean, beta_var = beta_var, 
+      bias = bias, mse = mse, coverage = coverage, power = power
+    ))
+    
+    # Append to results for optimal design tracking
     results <- rbind(results, data.frame(G = G, R = R, beta_mean = beta_mean, beta_var = beta_var, 
                                          alpha = alpha, beta = beta, gamma2 = gamma2, 
                                          sigma2 = sigma2, c1 = c1, c2 = c2, B = B))
   }
   
+  # Find the optimal design (minimum beta variance)
   optimal <- results[which.min(results$beta_var), ]
-  return(list(optimal = optimal, all_results = results))
   
-  results_path = paste0("normal_results")
+  results_path = paste0("normal_performance_results")
   if (!dir.exists(results_path)) dir.create(results_path)
   
- result_file_name = paste0("/results_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2, 
-                           "_sigma2-", sigma2, "_B", B, "_c1-", c1, "_c2-", c2, ".csv")
-  write.csv(results, paste0(results_path, result_file_name))
+ result_file_name = paste0("/performance_results_beta", beta, "_sigma2-", sigma2, "_gamma2-", gamma2, "_B", B, "_c1-", c1, "_c2-", c2, ".csv")
+  write.csv(performance_table, paste0(results_path, result_file_name), row.names = F)
+  
+  
+  return(list(optimal = optimal, all_results = results, performance_table = performance_table))
+  
 }
 
 ```
@@ -498,7 +535,7 @@ input_combinations <- list(
 )
 
 # Generate all plots
-plots <- generate_multiple_plots(input_combinations, iterations = 5) 
+plots <- generate_multiple_plots(input_combinations, iterations = 2) 
 
 
 
@@ -512,6 +549,68 @@ combined_plots = egg::ggarrange(
 
 
 ```
+
+```{r}
+# Define the folder path
+folder_path <- "normal_performance_results"
+
+# List all CSV files in the folder
+csv_files <- list.files(folder_path, pattern = "\\.csv$", full.names = TRUE)
+
+# Initialize an empty data frame to store results
+combined_normal_results <- data.frame()
+
+# Loop through each file, read it, and extract the row with the lowest variance
+for (file in csv_files) {
+  data <- read.csv(file, row.names = FALSE)
+ 
+    min_variance_row <- data[which.min(data$beta_var), ]
+    
+    # Combine it with the results
+    combined_normal_results <- rbind(combined_normal_results, min_variance_row)
+  }
+
+
+combined_normal_results = combined_normal_results %>%
+  filter(floor(c2) == c2) %>%
+  mutate(
+    beta_hat = round(beta_hat, 4),
+    beta_var = round(beta_var, 4),
+    mse = round(mse, 4),
+    bias = round(bias, 4),
+    coverage = round(coverage, 4),
+    power = round(power, 4)
+  )
+
+
+kable_table <- combined_normal_results %>%
+  knitr::kable("latex",
+    caption = "Summary of Optimal Design Performance Across Various Data-Generating Settings for Y∼Normal",
+    col.names = c(
+      "c1",
+      "c2",
+      "$\\sigma^2$",
+      "$\\gamma^2$",
+      "G",
+      "R",
+      "True $\\beta$",
+      "$(\\hat{\\beta})$",
+      "$\\mathrm{Var}(\\hat{\\beta})$",
+      "Bias",
+      "MSE",
+      "Coverage",
+      "Power"
+    ), escape = F) %>%
+  kable_styling(full_width = FALSE,
+                bootstrap_options = c("striped", "hover"),
+                font_size = 10) %>%
+  collapse_rows(columns = 1, valign = "top")
+
+# Print the table (in R Markdown, this will render the table)
+kable_table
+
+```
+
 
 # POISSON
 
@@ -557,8 +656,21 @@ simulate_poisson_cluster_data <- function(alpha, beta, gamma2, G, R) {
 #' @return The estimated fixed effect (`beta_hat`) for the treatment variable.
 fit_poisson_model <- function(data) {
   model <- glmer(Y ~ X + (1 | cluster), family = poisson, data = data)
-  beta_hat <- fixef(model)["X"]
-  return(beta_hat)
+  if ("X" %in% names(fixef(model))) {
+    beta_hat <- fixef(model)["X"]
+    
+    # Try to calculate the confidence interval for X
+    CI <- tryCatch(confint(model, parm = "X", level = 0.95), error = function(e) NA)
+    
+    # Extract t-value for X, if available
+    z_value <- tryCatch(coef(summary(model))["X", "z value"], error = function(e) NA)  # Use "z value" for glmer
+  } else {
+    beta_hat <- NA  # Assign NA if X is not in the model
+    CI <- c(NA, NA)  # Assign NA for confidence interval
+    z_value <- NA  # Assign NA for z-value
+  }
+  
+  return(list(beta_hat, CI, z_value))
 }
 
 ```
@@ -588,39 +700,64 @@ optimize_poisson_design <- function(alpha, beta, gamma2, B, c1, c2, iterations =
                         alpha = numeric(), beta = numeric(), gamma2 = numeric(), 
                         c1 = numeric(), c2 = numeric(), B = numeric())
   
-  for (G in 2:(B / c1)) {
+   performance_table <- data.frame()
+  
+  for (G in 2:floor(B / c1)) {
     R <- floor((B - G * c1) / (c2 * G)) + 1
     if (R < 2) next # Skip if R < 2 (must have at least 2 observations per cluster)
     
     beta_hats <- numeric(iterations)
+    coverage_count <- 0
+    power_count <- 0
     
-    #combined_data <- data.frame()
-     num_cores = detectCores() - 2
-    cl = makeCluster(num_cores)
-    registerDoParallel(cl)
+    combined_data <- data.frame()
     
-    clusterExport(cl, c("simulate_poisson_cluster_data", "fit_poisson_model","optimize_poisson_design"))
     
     set.seed(58)
 
-    combined_data <- foreach (i = 1:iterations, .combine = rbind, .packages = c("lme4", "dplyr")) %dopar% {
+    for (i in 1:iterations){
       data <- simulate_poisson_cluster_data(alpha, beta, gamma2, G, R)
-      beta_hats[i] <- fit_poisson_model(data)
+      glmer.model <- fit_poisson_model(data)
+      beta_hat = glmer.model[[1]]
+      ci = glmer.model[[2]]
+      z_value = glmer.model[[3]]
       
-      data = cbind(data, iteration = i)
+      # Skip iteration if beta_hat, ci, or z_value is NA
+      if (is.na(beta_hat) ||
+          is.na(ci[1]) || is.na(ci[2]) || is.na(z_value)) {
+        next
+      }
       
-      return(data)
+      # Store beta_hat
+      beta_hats[i] <- beta_hat
       
-      #combined_data <- rbind(combined_data, cbind(data, iteration = i))
+      # Calculate metrics for this iteration
+      ci_lower <- ci[1]
+      ci_upper <- ci[2]
+      if (ci_lower <= beta && beta <= ci_upper) coverage_count <- coverage_count + 1
+      if (abs(z_value)>1.96) power_count <- power_count + 1
+      
+      combined_data <- rbind(combined_data, cbind(data, iteration = i))
     }
     
-    stopCluster(cl)
  # Save the combined data for this G and R to a single file
     file_name <- paste0(save_dir, "/simulation_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2, "_B", B, "_c1-", c1, "_c2-", c2, ".rds")
     saveRDS(combined_data, file_name)
-    beta_mean <- mean(na.omit(beta_hats))
-    beta_var <- var(na.omit(beta_hats))   
     
+    # Aggregate metrics over all iterations
+    beta_mean <- mean(beta_hats, na.rm = TRUE)
+    beta_var <- var(beta_hats, na.rm = TRUE)
+    bias <- beta_mean - beta
+    mse <- mean((beta_hats - beta)^2, na.rm = TRUE)
+    coverage <- coverage_count / iterations
+    power <- power_count / iterations
+    
+    # Append results to performance table
+    performance_table <- rbind(performance_table, data.frame(
+      c1 = c1, c2 = c2, gamma2 = gamma2, G = G, R = R,
+      beta = beta, beta_hat = beta_mean, beta_var = beta_var, 
+      bias = bias, mse = mse, coverage = coverage, power = power
+    ))
     
     results <- rbind(results, data.frame(
       G = G, R = R, beta_mean = beta_mean, beta_var = beta_var, 
@@ -630,14 +767,16 @@ optimize_poisson_design <- function(alpha, beta, gamma2, B, c1, c2, iterations =
   
   # Find the combination with the lowest variance
   optimal <- results[which.min(results$beta_var), ]
-  return(list(optimal = optimal, all_results = results))
   
-  results_path = paste0("poisson_results")
+
+results_path = paste0("poisson_performance_results")
   if (!dir.exists(results_path)) dir.create(results_path)
   
- result_file_name = paste0("/results_beta", beta, "_G", G, "_R", R, "_gamma2-", gamma2,
-                           "_B", B, "_c1-", c1, "_c2-", c2, ".csv")
-  write.csv(results, paste0(results_path, result_file_name))
+ result_file_name = paste0("/performance_results_beta", beta, "_gamma2-", gamma2, "_B", B, "_c1-", c1, "_c2-", c2, ".csv")
+  write.csv(performance_table, paste0(results_path, result_file_name), row.names = F)
+  
+  
+  return(list(optimal = optimal, all_results = results, performance_table = performance_table))
 }
 
 ```
@@ -687,6 +826,8 @@ generate_poisson_plot <- function(alpha, beta, gamma2, B, c1, c2, iterations = 1
           axis.title.y = element_blank(),
           plot.title = element_text(size = 9)
           )
+  
+  performance_table = results$performance_table
   
   return(plot)
 }
@@ -748,7 +889,7 @@ input_combinations <- list(
 )
 
 # Generate Poisson plots for the defined parameter combinations
-poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 10)
+poisson_plots <- generate_multiple_poisson_plots(input_combinations, iterations = 2)
 
 # Combine and display the Poisson plots in a grid
 combined_poisson_plots <- egg::ggarrange(
@@ -761,8 +902,72 @@ combined_poisson_plots <- egg::ggarrange(
 
 ```
 
+```{r}
+# Define the folder path
+folder_path <- "poisson_performance_results"
 
-```{r, fig.height = 6, fig.width = 12, fig.align = 'center', out.width = "85%"}
+# List all CSV files in the folder
+csv_files <- list.files(folder_path, pattern = "\\.csv$", full.names = TRUE)
+
+# Initialize an empty data frame to store results
+combined_poisson_results <- data.frame()
+
+# Loop through each file, read it, and extract the row with the lowest variance
+for (file in csv_files) {
+  data <- read.csv(file, row.names = FALSE)
+  
+  # Ensure beta_var exists in the file to identify the row with the lowest variance
+  if ("beta_var" %in% names(data)) {
+    # Extract the row with the lowest variance
+    min_variance_row <- data[which.min(data$beta_var), ]
+    
+    # Combine it with the results
+    combined_poisson_results <- rbind(combined_poisson_results, min_variance_row)
+  }
+}
+
+combined_poisson_results = combined_poisson_results %>%
+  filter(floor(c2) == c2) %>%
+  mutate(
+    beta_hat = round(beta_hat, 4),
+    beta_var = round(beta_var, 4),
+    mse = round(mse, 4),
+    bias = round(bias, 4),
+    coverage = round(coverage, 4),
+    power = round(power, 4)
+  )
+
+print(combined_poisson_results)
+kable_table <- combined_normal_results[-1] %>%
+  knitr::kable("latex",
+    caption = "Summary of Optimal Design Performance Across Various Data-Generating Settings for Y ~ Poisson",
+    col.names = c(
+      "c1",
+      "c2",
+      "$\\gamma^2$",
+      "G",
+      "R",
+      "True $\\beta$",
+      "$(\\hat{\\beta})$",
+      "$\\mathrm{Var}(\\hat{\\beta})$",
+      "Bias",
+      "MSE",
+      "Coverage",
+      "Power"
+    ), escape = F) %>%
+  kable_styling(full_width = FALSE,
+                bootstrap_options = c("striped", "hover"),
+                font_size = 10) %>%
+  column_spec(1, bold = TRUE) %>%
+  collapse_rows(columns = 1, valign = "top")
+
+# Print the table (in R Markdown, this will render the table)
+kable_table
+
+
+```
+
+```{r, fig.height = 8, fig.width = 12, fig.align = 'center', out.width = "85%"}
 # For AIM 2
 # Sensitivity Analysis: Cost Ratio (c1/c2) vs Variance of Beta Estimate
 
@@ -773,7 +978,7 @@ beta_list <- c(1, 10, 1, 10)
 gamma2_list <- c(0.2, 0.4, 0.6, 0.8)
 sigma2_list <- c(1,2,1,2)
 B <- 5000  
-iterations <- 5
+iterations <- 2
 
 sensitivity_plots <- list()
 
@@ -820,12 +1025,10 @@ poisson_title = ifelse(j == 1, "Y ~ Poisson Distribution", "")
 gnorm <- ggplot(sensitivity_results) +  
    geom_line(aes(x = c1_c2_ratio, y = normal_beta_var), color = "purple3", size = 1) +
   geom_point(aes(x = c1_c2_ratio, y = normal_beta_var), size = 1, color = "black") +
-  annotate("text", x = max(sensitivity_results$c1_c2_ratio)*0.9, 
-           y = max(sensitivity_results$normal_beta_var) * 0.9, 
-           label = paste0("\nbeta = ", beta, 
-                          "\ngamma^2 = ", gamma2, 
-                          "\nsigma^2 = ", sigma2), 
-           hjust = 1, size = 3, color = "black") + 
+  annotate("text", x = max(sensitivity_results$c1_c2_ratio)*0.95, 
+           y = max(sensitivity_results$normal_beta_var) * 0.8, 
+           label = bquote(list(beta==.(beta), gamma^2 == .(gamma2), sigma^2 ==.(sigma2))), 
+           hjust = 1, size = 4, color = "red") + 
   labs(
     title = normal_title
   ) +
@@ -836,12 +1039,10 @@ sensitivity_plots[[(j-1)*2+1]] <- gnorm
 gpois <- ggplot(sensitivity_results) +  
   geom_line(aes(x = c1_c2_ratio, y = poisson_beta_var), color = "purple3", size = 1) +
   geom_point(aes(x = c1_c2_ratio, y = poisson_beta_var), size = 1, color = "black") +
-  annotate("text", x = max(sensitivity_results$c1_c2_ratio) *0.9, 
-           y = max(sensitivity_results$normal_beta_var) * 0.9, 
-           label = paste0("\nbeta = ", beta, 
-                          "\ngamma^2 = ", gamma2
-                          ), 
-           hjust = 1, size = 3, color = "black") + 
+  annotate("text", x = max(sensitivity_results$c1_c2_ratio) *0.95, 
+           y = max(sensitivity_results$normal_beta_var) * 0.8, 
+           label = bquote(list(beta==.(beta), gamma^2 == .(gamma2))), 
+           hjust = 1, size = 4, color = "red") + 
   labs(
     title = poisson_title
   ) +
@@ -858,6 +1059,10 @@ egg::ggarrange(plots = sensitivity_plots,
                bottom = "Cost Ratio (c1 / c2)",
                left = "Variance of Beta Estimate")
 ```
+
+
+
+
 
 # Conclusion and Limits
 
