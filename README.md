@@ -16,11 +16,11 @@
 
 ## File Description
 
-**`project3_Rontogiannis_Rmarkdown.Rmd`**: The main report
+**`project3_Rontogiannis_Rmarkdown.Rmd`**: The code in R markdown
 
 **`References.bib`**: The article bibliography for the report
 
-**`Practical_Data_Analysis_Project3_Aristofanis_Rontogiannis.pdf`**: The knitted report as .pdf
+**`project3_Rontogiannis_Rmarkdown.pdf`**: The knitted report as .pdf
 
 ## Dependancies
 
