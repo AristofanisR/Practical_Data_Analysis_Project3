@@ -29,16 +29,26 @@ This simulation study demonstrates the utility of hierarchical models and the AD
 
 **`project3_Rontogiannis_Rmarkdown.pdf`**: The knitted report as .pdf
 
+**`normal_performance_results`**: The folder that stores the results and performace metrics datasets for Normally Distributed Outcome
+
+**`poisson_performance_results`**: The folder that stores the results and performace metrics datasets for Outcomes using Poisson Distribution
+
+**`normal_simulation_data`**: The folder that stores the simulated data for Normally Distributed Outcome
+
+**`poisson_simulation_data`**: The folder that stores the simulated data for Outcomes using Poisson Distribution
+
+
 ## Dependancies
 
 **Data Manipulation and Transformation**: `dplyr`, `reshape2`, `tidyr`, `lubridate`
 
-**Data Visualization**: `ggplot2`, `patchwork`, `GGally`, `ggcorrplot`, `cowplot`, `ggmosaic`, `corrplot`, `ggbeeswarm`, `ggdist`, `grid`, `gridExtra`
+**Data Visualization**: `ggplot2`, `patchwork`, `GGally`, `ggcorrplot`, `cowplot`, `ggdist`, `grid`, `gridExtra`, `ggpubr`, `egg`
 
-**Data Summary and Reporting**: `gtsummary`, `summarytools`, `knitr`, `kableExtra`, `gtsummary`, `gt`
+**Data Summary and Reporting**: `knitr`, `kableExtra`, `gtsummary`, `gt`
 
-**Data Analysis and Evaluation**: `glmnet`, `leaps`, `pROC`, `MASS'
+**Data Analysis and Evaluation**:  `MASS`, `lme4`
 
-**Imputation and Missing Data Handling**: `MICE`
+**Parallel Computing**: `foreach`, `doParallel`
+
 
 
